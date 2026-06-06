@@ -56,6 +56,12 @@ git clone https://github.com/Poojana-Fernando/healthqor_HealthID.git
 cd healthqor_HealthID
 ```
 
+> **Git LFS:** The background video is stored with Git LFS. Install [Git LFS](https://git-lfs.com/) before cloning:
+> ```bash
+> git lfs install
+> git clone https://github.com/Poojana-Fernando/healthqor_HealthID.git
+> ```
+
 ### 2. Create the database
 
 ```sql
