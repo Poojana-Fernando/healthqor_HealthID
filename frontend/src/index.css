@@ -1,0 +1,255 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --navy: #0c1a14;
+  --blue: #1a3d2e;
+  --forest: #14532d;
+  --accent: #34d399;
+  --accent2: #5eead4;
+  --frost: #a7f3d0;
+  --glass: rgba(255, 255, 255, 0.08);
+  --border: rgba(255, 255, 255, 0.18);
+  --text: #ecfdf5;
+}
+
+body {
+  margin: 0;
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  background: transparent;
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+@layer components {
+  .premium-glass {
+    background: rgba(12, 26, 20, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.2),
+      0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+      0 0 48px rgba(52, 211, 153, 0.08);
+  }
+
+  .text-gradient-health {
+    background: linear-gradient(135deg, #6ee7b7 0%, #5eead4 40%, #a7f3d0 70%, #ecfdf5 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-size: 200% 200%;
+    animation: gradient-shift 8s ease infinite;
+  }
+
+  .symptom-chip {
+    @apply px-5 py-2.5 rounded-full text-sm font-medium
+      border border-white/15 bg-white/10 backdrop-blur-sm
+      transition-all duration-300 ease-out cursor-pointer;
+  }
+
+  .symptom-chip:hover {
+    transform: scale(1.05);
+    border-color: rgba(52, 211, 153, 0.5);
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 0 20px rgba(52, 211, 153, 0.2);
+  }
+
+  .symptom-chip-active {
+    transform: scale(1.05);
+    border-color: rgba(94, 234, 212, 0.65);
+    background: rgba(16, 185, 129, 0.25);
+    color: #ecfdf5;
+    box-shadow: 0 0 24px rgba(52, 211, 153, 0.35), 0 0 0 1px rgba(94, 234, 212, 0.35);
+  }
+
+  .cta-premium {
+    @apply relative inline-flex items-center justify-center font-semibold tracking-wide
+      text-white rounded-xl overflow-hidden
+      transition-all duration-300 ease-out;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.92), rgba(20, 184, 166, 0.88));
+    box-shadow: 0 4px 24px rgba(52, 211, 153, 0.35);
+  }
+
+  .cta-premium::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(110, 231, 183, 0.9), rgba(94, 234, 212, 0.9), rgba(52, 211, 153, 0.9));
+    background-size: 200% 200%;
+    animation: gradient-shift 4s ease infinite;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .cta-premium:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 32px rgba(52, 211, 153, 0.45), 0 0 40px rgba(94, 234, 212, 0.2);
+  }
+
+  .cta-premium:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  .mesh-gradient {
+    background:
+      radial-gradient(ellipse 70% 50% at 25% 35%, rgba(52, 211, 153, 0.12), transparent 55%),
+      radial-gradient(ellipse 55% 45% at 75% 65%, rgba(94, 234, 212, 0.08), transparent 55%),
+      radial-gradient(ellipse 40% 30% at 50% 90%, rgba(20, 83, 45, 0.15), transparent 50%);
+    animation: mesh-drift 20s ease-in-out infinite alternate;
+  }
+
+  .medical-logo-pulse {
+    animation: logo-pulse 2s ease-in-out infinite;
+  }
+
+  .medical-ecg {
+    stroke-dasharray: 120;
+    animation: ecg-draw 2.4s ease-in-out infinite;
+  }
+
+  .medical-shield {
+    animation: shield-glow 3s ease-in-out infinite;
+  }
+
+  .stat-card-hover {
+    @apply border border-white/10 transition-all duration-300 ease-out;
+    transform-style: preserve-3d;
+  }
+
+  .stat-card-hover:hover {
+    transform: scale(1.04) perspective(500px) rotateX(2deg) rotateY(-1deg);
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.15), 0 8px 24px rgba(0, 0, 0, 0.2);
+    border-color: rgba(94, 234, 212, 0.35);
+  }
+
+  .allergy-alert {
+    animation: allergy-pulse 2.2s ease-in-out infinite;
+  }
+
+  .neural-mesh {
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(6, 182, 212, 0.08) 0%, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(59, 130, 246, 0.06) 0%, transparent 45%),
+      radial-gradient(circle at 50% 50%, rgba(14, 116, 144, 0.05) 0%, transparent 50%);
+    background-size: 200% 200%;
+    animation: neural-drift 25s ease-in-out infinite alternate;
+  }
+
+  .neural-mesh::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(94, 234, 212, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(94, 234, 212, 0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black 20%, transparent 75%);
+    animation: grid-shift 30s linear infinite;
+  }
+
+  .fluid-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.35;
+    animation: orb-float 18s ease-in-out infinite;
+  }
+
+  .fluid-orb-1 {
+    width: 420px;
+    height: 420px;
+    background: radial-gradient(circle, rgba(6, 182, 212, 0.5), transparent 70%);
+    top: -10%;
+    left: -5%;
+    animation-delay: 0s;
+  }
+
+  .fluid-orb-2 {
+    width: 360px;
+    height: 360px;
+    background: radial-gradient(circle, rgba(30, 58, 138, 0.6), transparent 70%);
+    bottom: 10%;
+    right: -8%;
+    animation-delay: -6s;
+  }
+
+  .fluid-orb-3 {
+    width: 280px;
+    height: 280px;
+    background: radial-gradient(circle, rgba(94, 234, 212, 0.35), transparent 70%);
+    top: 45%;
+    left: 40%;
+    animation-delay: -12s;
+  }
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes mesh-drift {
+  0% { transform: scale(1) translate(0, 0); opacity: 0.2; }
+  100% { transform: scale(1.04) translate(-1%, 1%); opacity: 0.35; }
+}
+
+@keyframes logo-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.12); opacity: 0.15; }
+}
+
+@keyframes ecg-draw {
+  0% { stroke-dashoffset: 120; }
+  50% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -120; }
+}
+
+@keyframes shield-glow {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(52, 211, 153, 0.4)); }
+  50% { filter: drop-shadow(0 0 10px rgba(94, 234, 212, 0.7)); }
+}
+
+@keyframes allergy-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45);
+    background-color: rgba(239, 68, 68, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 14px 4px rgba(239, 68, 68, 0.3);
+    background-color: rgba(239, 68, 68, 0.32);
+  }
+}
+
+@keyframes neural-drift {
+  0% { background-position: 0% 0%; transform: scale(1); }
+  100% { background-position: 100% 100%; transform: scale(1.05); }
+}
+
+@keyframes grid-shift {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(48px, 48px); }
+}
+
+@keyframes orb-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(3%, -2%) scale(1.05); }
+  66% { transform: translate(-2%, 3%) scale(0.95); }
+}
