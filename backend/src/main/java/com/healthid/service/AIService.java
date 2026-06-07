@@ -2,6 +2,9 @@ package com.healthid.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.healthid.dto.ai.ChatMessageDto;
+import com.healthid.dto.ai.ChatRequest;
+import com.healthid.dto.ai.ChatResponse;
 import com.healthid.dto.ai.HealthAnalysisRequest;
 import com.healthid.dto.ai.HealthAnalysisResponse;
 import com.healthid.dto.ai.RecommendedArticle;
@@ -125,6 +128,55 @@ public class AIService {
                 .build();
     }
 
+    public ChatResponse chat(String requesterEmail, ChatRequest request) {
+        User user = userRepository.findByEmail(requesterEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        String profileContext = healthProfileRepository.findByUserId(user.getId())
+                .map(this::buildChatProfileContext)
+                .orElse("No health profile data available.");
+
+        String systemPrompt = """
+                You are the Health ID Sri Lanka medical assistant chatbot inside a digital health web application.
+
+                ONLY answer questions related to:
+                - Human health, symptoms, wellness, nutrition, fitness, sleep, and mental wellbeing
+                - Preventive care, vaccinations, allergies, BMI, and lifestyle for people
+                - How to use this Health ID app (profile, Health ID card, symptom checker, e-Channeling, appointments, AI analysis)
+
+                You MUST REFUSE questions about non-human topics such as:
+                - Animal, plant, or veterinary health
+                - Programming, coding, mathematics, politics, sports, entertainment, or general trivia
+                - Any subject unrelated to human health or this healthcare application
+
+                When refusing, say politely: "I can only help with human health topics and using the Health ID application."
+
+                Rules:
+                - Never provide a medical diagnosis — suggest seeing a licensed doctor for serious concerns
+                - Keep answers concise, warm, and practical (2-4 short paragraphs max)
+                - Use plain language suitable for patients in Sri Lanka
+
+                User health context:
+                """ + profileContext;
+
+        List<Map<String, String>> messages = new ArrayList<>();
+        messages.add(Map.of("role", "system", "content", systemPrompt));
+
+        if (request.getHistory() != null) {
+            for (ChatMessageDto entry : request.getHistory()) {
+                if (entry.getRole() != null && entry.getContent() != null
+                        && ("user".equals(entry.getRole()) || "assistant".equals(entry.getRole()))) {
+                    messages.add(Map.of("role", entry.getRole(), "content", entry.getContent()));
+                }
+            }
+        }
+        messages.add(Map.of("role", "user", "content", request.getMessage()));
+
+        String reply = callOpenAIChat(messages);
+        auditLogService.log(user.getId(), "AI_CHAT", "AI", null);
+        return ChatResponse.builder().reply(reply).build();
+    }
+
     @Transactional
     public HealthAnalysisResponse healthAnalysis(String requesterEmail, HealthAnalysisRequest request) {
         User requester = userRepository.findByEmail(requesterEmail)
@@ -164,6 +216,13 @@ public class AIService {
 
         auditLogService.log(requester.getId(), "AI_HEALTH_ANALYSIS", "HealthProfile", profile.getId());
         return response;
+    }
+
+    private String buildChatProfileContext(HealthProfile profile) {
+        return "Gender: " + profile.getGender()
+                + ", BMI: " + profile.getBmi()
+                + ", Blood type: " + profile.getBloodType()
+                + ", Allergies: " + (profile.getAllergies() != null ? profile.getAllergies() : "none");
     }
 
     private String buildAnonymousProfile(HealthProfile profile, List<Vaccination> vaccinations, List<MedicalHistory> history) {
@@ -225,17 +284,24 @@ public class AIService {
     }
 
     private String callOpenAI(String systemPrompt, String userPrompt) {
+        return callOpenAIChat(List.of(
+                Map.of("role", "system", "content", systemPrompt),
+                Map.of("role", "user", "content", userPrompt)
+        ));
+    }
+
+    private String callOpenAIChat(List<Map<String, String>> messages) {
+        String systemPrompt = messages.isEmpty() ? "" : messages.get(0).get("content");
+        String userPrompt = messages.size() > 1 ? messages.get(messages.size() - 1).get("content") : "";
+
         if (apiKey == null || apiKey.isBlank()) {
             return fallbackResponse(systemPrompt, userPrompt);
         }
         try {
             Map<String, Object> body = new HashMap<>();
             body.put("model", model);
-            body.put("max_tokens", 1536);
-            body.put("messages", List.of(
-                    Map.of("role", "system", "content", systemPrompt),
-                    Map.of("role", "user", "content", userPrompt)
-            ));
+            body.put("max_tokens", 1024);
+            body.put("messages", messages);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -256,6 +322,11 @@ public class AIService {
     }
 
     private String fallbackResponse(String systemPrompt, String userPrompt) {
+        if (systemPrompt.contains("medical assistant chatbot")) {
+            return "I'm your Health ID medical assistant. I can help with human health questions and how to use this app. "
+                    + "For symptoms, try the AI Symptom Checker on the homepage. For diet advice, run AI Health Analysis on your profile. "
+                    + "Please note: I cannot diagnose conditions — consult a licensed doctor for medical concerns.";
+        }
         if (systemPrompt.contains("triage")) {
             return """
                     {"recommended_specialty":"General Practice","urgency_level":"moderate",

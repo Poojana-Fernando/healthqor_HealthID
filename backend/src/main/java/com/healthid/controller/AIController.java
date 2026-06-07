@@ -1,5 +1,7 @@
 package com.healthid.controller;
 
+import com.healthid.dto.ai.ChatRequest;
+import com.healthid.dto.ai.ChatResponse;
 import com.healthid.dto.ai.HealthAnalysisRequest;
 import com.healthid.dto.ai.HealthAnalysisResponse;
 import com.healthid.dto.ai.SymptomCheckRequest;
@@ -41,5 +43,13 @@ public class AIController {
             @AuthenticationPrincipal String email,
             @Valid @RequestBody HealthAnalysisRequest request) {
         return ResponseEntity.ok(aiService.healthAnalysis(email, request));
+    }
+
+    @PostMapping("/chat")
+    @Operation(summary = "Medical assistant chatbot — human health and app help only")
+    public ResponseEntity<ChatResponse> chat(
+            @AuthenticationPrincipal String email,
+            @Valid @RequestBody ChatRequest request) {
+        return ResponseEntity.ok(aiService.chat(email, request));
     }
 }
