@@ -53,7 +53,8 @@ export default function SignupPage() {
     const code = params.get('code')
     if (code) {
       setLoading(true)
-      googleLogin(code)
+      const redirectUri = window.location.origin + '/signup'
+      googleLogin(code, redirectUri)
         .then(() => navigate('/profile'))
         .catch((e) => setError(e.message))
         .finally(() => setLoading(false))
@@ -114,6 +115,8 @@ export default function SignupPage() {
       >
         <span className="text-xl">G</span> Continue with Google
       </button>
+
+
 
       <div className="flex items-center gap-4 mb-6">
         <div className="flex-1 h-px bg-border" />

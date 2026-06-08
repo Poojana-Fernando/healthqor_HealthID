@@ -37,8 +37,8 @@ export function AuthProvider({ children }) {
     return res
   }
 
-  const googleLogin = async (code) => {
-    const res = await api.googleAuth({ code, redirectUri: window.location.origin + '/signup' })
+  const googleLogin = async (code, redirectUri) => {
+    const res = await api.googleAuth({ code, redirectUri })
     setUser(res)
     await refreshProfile()
     return res
