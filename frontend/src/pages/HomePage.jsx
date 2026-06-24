@@ -2,16 +2,40 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../api/client'
 import AnimatedLogo from '../components/AnimatedLogo'
+import HumanoidFigure from '../components/HumanoidFigure'
+import OrganDetailsCard from '../components/OrganDetailsCard'
 
 const SYMPTOMS = ['Headache', 'Fever', 'Cough', 'Fatigue', 'Nausea', 'Chest Pain', 'Dizziness', 'Sore Throat']
 
+const ORGAN_SYMPTOMS = {
+  BRAIN: ['Headache', 'Dizziness', 'Fever'],
+  HEART: ['Chest Pain', 'Fatigue'],
+  LUNGS: ['Cough', 'Sore Throat', 'Fatigue'],
+  LIVER: ['Nausea', 'Fever'],
+  STOMACH: ['Nausea'],
+  KIDNEYS: ['Fever', 'Fatigue'],
+  INTESTINES: ['Nausea', 'Fever'],
+  SKIN_LIMBS: ['Fatigue']
+}
+
 export default function HomePage() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const [selected, setSelected] = useState([])
+  const [activeRegion, setActiveRegion] = useState(null)
+  const [hoveredRegion, setHoveredRegion] = useState(null)
+  const displayRegion = hoveredRegion || activeRegion
   const [aiResult, setAiResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [doctors, setDoctors] = useState([])
   const [loc, setLoc] = useState(null)
+
+  const handleRegionClick = (region) => {
+    setActiveRegion((prev) => (prev === region ? null : region))
+  }
+
+  const handleRegionHover = (region) => {
+    setHoveredRegion(region)
+  }
 
   useEffect(() => {
     navigator.geolocation?.getCurrentPosition(
@@ -72,87 +96,145 @@ export default function HomePage() {
 
       <section className="max-w-7xl mx-auto px-6 py-16 md:py-20">
         <h2 className="text-3xl font-bold mb-8 tracking-tight">AI Symptom Checker</h2>
-        <div className="premium-glass rounded-3xl p-8 md:p-10 shadow-glass-glow-lg">
-          <div className="flex flex-wrap gap-3 mb-8">
-            {SYMPTOMS.map((s) => (
-              <button
-                key={s}
-                onClick={() => toggleSymptom(s)}
-                className={`symptom-chip ${selected.includes(s) ? 'symptom-chip-active' : ''}`}
-              >
-                {s}
-              </button>
-            ))}
+        <div className="grid lg:grid-cols-12 gap-8 items-stretch">
+          {/* Column 1: 3D Model (Full Scale) */}
+          <div className="lg:col-span-6 h-[680px]">
+            <HumanoidFigure 
+              gender={user?.gender || 'MALE'} 
+              onRegionClick={handleRegionClick}
+              onRegionHover={handleRegionHover}
+              activeRegion={activeRegion}
+            />
           </div>
-          {user ? (
-            <button
-              onClick={runSymptomCheck}
-              disabled={loading || selected.length === 0}
-              className="cta-premium px-8 py-3.5"
-            >
-              {loading ? 'Analysing...' : 'Check Symptoms'}
-            </button>
-          ) : (
-            <p className="text-sm opacity-60">Login to use the AI Symptom Checker</p>
-          )}
-          {aiResult && (
-            <div className="mt-8 p-6 premium-glass rounded-2xl space-y-5">
-              {aiResult.recommendedSpecialty && (
-                <p><span className="text-accent2 font-medium">Specialty:</span> {aiResult.recommendedSpecialty}</p>
-              )}
-              {aiResult.urgencyLevel && (
-                <p><span className="text-accent2 font-medium">Urgency:</span> {aiResult.urgencyLevel}</p>
-              )}
-              <p className="text-sm opacity-70">{aiResult.disclaimer}</p>
 
-              {aiResult.whatNotToDo?.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-semibold text-red-300 mb-2">What NOT to do</h4>
-                  <ul className="space-y-1.5">
-                    {aiResult.whatNotToDo.map((item) => (
-                      <li key={item} className="text-sm flex gap-2">
-                        <span className="text-red-400 shrink-0">✕</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
+          {/* Column 2: Organ Details & Health Stats Inspector */}
+          <div className="lg:col-span-3">
+            <OrganDetailsCard 
+              activeRegion={displayRegion}
+              onClear={() => {
+                setActiveRegion(null)
+                setHoveredRegion(null)
+              }}
+              profile={profile}
+            />
+          </div>
+
+          {/* Column 3: AI Symptom Checker */}
+          {/* Column 3: AI Symptom Checker */}
+          <div className="lg:col-span-3 premium-glass rounded-3xl p-8 md:p-10 shadow-glass-glow-lg flex flex-col justify-between h-[680px] max-h-[680px] overflow-hidden">
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="flex justify-between items-center mb-6 shrink-0">
+                <h3 className="text-lg font-mono text-accent2 uppercase tracking-wider">
+                  {activeRegion ? `${activeRegion === 'SKIN_LIMBS' ? 'SKIN & LIMBS' : activeRegion} SYMPTOMS` : 'SELECT SYMPTOMS'}
+                </h3>
+                {activeRegion && (
+                  <button 
+                    onClick={() => setActiveRegion(null)}
+                    className="text-xs text-red-400 hover:text-red-300 transition-colors uppercase font-mono tracking-wider"
+                  >
+                    Clear Filter [x]
+                  </button>
+                )}
+              </div>
+
+              <div className="overflow-y-auto overflow-x-hidden pr-1.5 space-y-6 flex-1 custom-scrollbar">
+                <div className="flex flex-wrap gap-3 mb-4">
+                  {SYMPTOMS.map((s) => {
+                    const isSuggested = !activeRegion || (ORGAN_SYMPTOMS[activeRegion] && ORGAN_SYMPTOMS[activeRegion].includes(s));
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => toggleSymptom(s)}
+                        className={`symptom-chip ${selected.includes(s) ? 'symptom-chip-active' : ''} ${!isSuggested ? 'opacity-25' : ''}`}
+                      >
+                        {s}
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
 
-              {aiResult.recommendedArticles?.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-semibold text-accent2 mb-3">Recommended Articles</h4>
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {aiResult.recommendedArticles.map((article) => (
-                      <div key={article.title} className="glass p-4 rounded-xl text-sm stat-card-hover">
-                        <p className="font-semibold mb-1">{article.title}</p>
-                        <p className="opacity-70 text-xs leading-relaxed mb-2">{article.summary}</p>
-                        {article.source && (
-                          <p className="text-xs text-accent2 opacity-80">Source: {article.source}</p>
-                        )}
+                {aiResult && (
+                  <div className="mt-4 p-6 premium-glass rounded-2xl space-y-5">
+                    {aiResult.recommendedSpecialty && (
+                      <p><span className="text-accent2 font-medium">Specialty:</span> {aiResult.recommendedSpecialty}</p>
+                    )}
+                    {aiResult.urgencyLevel && (
+                      <p><span className="text-accent2 font-medium">Urgency:</span> {aiResult.urgencyLevel}</p>
+                    )}
+                    <p className="text-sm opacity-70">{aiResult.disclaimer}</p>
+
+                    {aiResult.whatNotToDo?.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-red-300 mb-2">What NOT to do</h4>
+                        <ul className="space-y-1.5">
+                          {aiResult.whatNotToDo.map((item) => (
+                            <li key={item} className="text-sm flex gap-2">
+                              <span className="text-red-400 shrink-0">✕</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                    )}
 
-              {aiResult.nearbyDoctors?.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-semibold text-accent2 mb-3">Nearby Doctors</h4>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    {aiResult.nearbyDoctors.slice(0, 4).map((d) => (
-                      <div key={d.id} className="glass p-4 rounded-xl text-sm">
-                        <p className="font-semibold">{d.name}</p>
-                        <p className="opacity-60">{d.specialization} — {d.hospital}</p>
+                    {aiResult.recommendedArticles?.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-accent2 mb-3">Recommended Articles</h4>
+                        <div className="space-y-3">
+                          {aiResult.recommendedArticles.map((article) => (
+                            <div key={article.title} className="glass p-4 rounded-xl text-sm stat-card-hover">
+                              <p className="font-semibold mb-1">{article.title}</p>
+                              <p className="opacity-70 text-xs leading-relaxed mb-2">{article.summary}</p>
+                              {article.source && (
+                                <p className="text-xs text-accent2 opacity-80">Source: {article.source}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    ))}
+                    )}
+
+                    {aiResult.nearbyDoctors?.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-accent2 mb-3">Nearby Doctors</h4>
+                        <div className="space-y-3">
+                          {aiResult.nearbyDoctors.slice(0, 4).map((d) => (
+                            <div key={d.id} className="glass p-4 rounded-xl text-sm">
+                              <p className="font-semibold">{d.name}</p>
+                              <p className="opacity-60">{d.specialization} — {d.hospital}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-white/10 shrink-0">
+              {user ? (
+                <div className="flex flex-wrap gap-4 items-center">
+                  <button
+                    onClick={runSymptomCheck}
+                    disabled={loading || selected.length === 0}
+                    className="cta-premium px-8 py-3.5"
+                  >
+                    {loading ? 'Analysing...' : 'Check Symptoms'}
+                  </button>
+                  {activeRegion && (
+                    <span className="text-xs text-accent2/70 font-mono animate-pulse">
+                      Filtered by 3D target
+                    </span>
+                  )}
                 </div>
+              ) : (
+                <p className="text-sm opacity-60">Login to use the AI Symptom Checker</p>
               )}
             </div>
-          )}
-        </div>
-      </section>
+          </div>
+      </div>
+    </section>
 
       <section className="max-w-7xl mx-auto px-6 py-16 md:py-20">
         <h2 className="text-3xl font-bold mb-8 tracking-tight">Personalised Health Guidance</h2>

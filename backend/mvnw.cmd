@@ -6,7 +6,8 @@
 setlocal
 
 set "MAVEN_PROJECTBASEDIR=%~dp0"
-set "WRAPPER_JAR=%MAVEN_PROJECTBASEDIR%.mvn\wrapper\maven-wrapper.jar"
+if "%MAVEN_PROJECTBASEDIR:~-1%"=="\" set "MAVEN_PROJECTBASEDIR=%MAVEN_PROJECTBASEDIR:~0,-1%"
+set "WRAPPER_JAR=%MAVEN_PROJECTBASEDIR%\.mvn\wrapper\maven-wrapper.jar"
 set "WRAPPER_LAUNCHER=org.apache.maven.wrapper.MavenWrapperMain"
 
 if not exist "%WRAPPER_JAR%" (
@@ -18,7 +19,7 @@ if not exist "%WRAPPER_JAR%" (
     )
 )
 
-set "MAVEN_OPTS=%MAVEN_OPTS% -classpath %WRAPPER_JAR% %WRAPPER_LAUNCHER%"
+set MAVEN_OPTS=%MAVEN_OPTS% -Dmaven.multiModuleProjectDirectory="%MAVEN_PROJECTBASEDIR%" -classpath "%WRAPPER_JAR%" %WRAPPER_LAUNCHER%
 
 if defined JAVA_HOME (
     "%JAVA_HOME%\bin\java.exe" %MAVEN_OPTS% %*

@@ -72,7 +72,7 @@ export default function ChatbotFab() {
             </div>
           ) : (
             <>
-              <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-[12rem]">
+              <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-3 space-y-3 min-h-[12rem] custom-scrollbar">
                 {messages.map((msg, i) => (
                   <div
                     key={i}

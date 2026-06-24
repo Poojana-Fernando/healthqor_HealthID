@@ -9,7 +9,7 @@ import { api } from '../api/client'
 import HealthIdCard from '../components/HealthIdCard'
 
 import HumanoidFigure from '../components/HumanoidFigure'
-
+import OrganDetailsCard from '../components/OrganDetailsCard'
 import Sparkline from '../components/Sparkline'
 
 
@@ -91,6 +91,9 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
 
   const [aiLoading, setAiLoading] = useState(false)
+  const [activeRegion, setActiveRegion] = useState(null)
+  const [hoveredRegion, setHoveredRegion] = useState(null)
+  const displayRegion = hoveredRegion || activeRegion
 
 
 
@@ -336,104 +339,27 @@ export default function ProfilePage() {
 
 
 
-        <div className="lg:col-span-6 rounded-2xl overflow-hidden min-h-[560px] border border-border">
-
-          <HumanoidFigure key={profile.gender || 'MALE'} gender={profile.gender || 'MALE'} />
-
+        {/* Middle Column: 3D Humanoid Model (Full Scale) */}
+        <div className="lg:col-span-6 border border-border rounded-2xl overflow-hidden h-[680px] bg-[#060e0a]">
+          <HumanoidFigure 
+            key={profile.gender || 'MALE'} 
+            gender={profile.gender || 'MALE'} 
+            onRegionClick={(region) => setActiveRegion((prev) => (prev === region ? null : region))}
+            onRegionHover={setHoveredRegion}
+            activeRegion={activeRegion}
+          />
         </div>
 
-
-
-        <div className="lg:col-span-3 space-y-5">
-
-          <h3 className="font-semibold text-accent2 tracking-wide">Health Stats</h3>
-
-          <div className="grid grid-cols-2 gap-4">
-
-            {[
-
-              { label: 'Gender', value: profile.gender || '—' },
-
-              { label: 'Blood Type', value: profile.bloodType || '—' },
-
-              { label: 'Height', value: profile.heightCm ? `${profile.heightCm} cm` : '—' },
-
-              {
-
-                label: 'Weight',
-
-                value: profile.weightKg ? `${profile.weightKg} kg` : '—',
-
-                sparkline: generateMockTrend(profile.weightKg, 2),
-
-                sparkColor: '#5eead4',
-
-              },
-
-              {
-
-                label: 'BMI',
-
-                value: profile.bmi || '—',
-
-                sparkline: generateMockTrend(profile.bmi, 3),
-
-                sparkColor: '#22d3ee',
-
-              },
-
-              { label: 'Eyesight L', value: profile.eyesightLeft || '—' },
-
-              { label: 'Eyesight R', value: profile.eyesightRight || '—' },
-
-            ].map((s) => (
-
-              <div key={s.label} className="premium-glass rounded-xl p-4 text-center stat-card-hover">
-
-                <p className="text-xs font-medium opacity-60 tracking-wide mb-1">{s.label}</p>
-
-                <p className="font-extrabold text-xl md:text-2xl tracking-tight text-white">{s.value}</p>
-
-                {s.sparkline && <Sparkline data={s.sparkline} color={s.sparkColor} />}
-
-              </div>
-
-            ))}
-
-          </div>
-
-          {profile.allergies?.length > 0 && (
-
-            <div className="premium-glass rounded-xl p-4 stat-card-hover">
-
-              <p className="text-xs font-medium opacity-60 mb-3 tracking-wide">Allergies</p>
-
-              <div className="flex flex-wrap gap-2">
-
-                {profile.allergies.map((a) => (
-
-                  <span key={a} className="text-xs bg-red-500/20 text-red-300 px-2.5 py-1 rounded-full allergy-alert">{a}</span>
-
-                ))}
-
-              </div>
-
-            </div>
-
-          )}
-
-          {profile.doctorVerified && (
-
-            <div className="glass rounded-xl p-3 flex items-center gap-2 text-green-400">
-
-              <span className="text-xl">✓</span>
-
-              <span className="text-sm">Doctor Verified Profile</span>
-
-            </div>
-
-          )}
-
+        {/* Right Column: System Inspector & Health Stats Card */}
+        <div className="lg:col-span-3">
+          <OrganDetailsCard 
+            activeRegion={displayRegion}
+            onClear={() => {
+              setActiveRegion(null)
+              setHoveredRegion(null)
+            }}
+            profile={profile}
+          />
         </div>
 
       </div>
