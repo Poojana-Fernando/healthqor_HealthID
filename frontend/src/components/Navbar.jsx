@@ -25,7 +25,7 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-6 text-sm">
           <Link to="/" className="hover:text-accent2 transition">Home</Link>
           <Link to="/profile" className="hover:text-accent2 transition">Healthcare</Link>
-          <a href="/echanneling" target="_blank" rel="noreferrer" className="hover:text-accent2 transition">
+          <a href="/echanneling" className="hover:text-accent2 transition">
             e-Channeling
           </a>
           <a href="#support" className="hover:text-accent2 transition">Support</a>

@@ -41,6 +41,7 @@ class AuthIntegrationTest {
         register.setBloodType("O+");
         register.setHeightCm(BigDecimal.valueOf(175));
         register.setWeightKg(BigDecimal.valueOf(70));
+        register.setAllergies(java.util.List.of("seafood"));
 
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)

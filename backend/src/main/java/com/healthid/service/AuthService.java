@@ -252,6 +252,10 @@ public class AuthService {
             return null;
         }
         BigDecimal heightM = heightCm.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
-        return weightKg.divide(heightM.multiply(heightM), 2, RoundingMode.HALF_UP);
+        BigDecimal bmi = weightKg.divide(heightM.multiply(heightM), 2, RoundingMode.HALF_UP);
+        if (bmi.compareTo(BigDecimal.valueOf(999.99)) > 0) {
+            return BigDecimal.valueOf(999.99);
+        }
+        return bmi;
     }
 }

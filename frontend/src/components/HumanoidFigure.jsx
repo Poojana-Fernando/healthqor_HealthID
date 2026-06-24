@@ -15,17 +15,68 @@ const MODELS = {
   FEMALE: { url: '/models/FemaleBaseMesh.obj', label: 'FemaleBaseMesh.obj' },
 }
 
+const ORGAN_SYSTEMS = {
+  BRAIN: 'Central Nervous System',
+  HEART: 'Cardiovascular System',
+  LUNGS: 'Respiratory System',
+  LIVER: 'Digestive System',
+  STOMACH: 'Digestive System',
+  KIDNEYS: 'Urinary System',
+  INTESTINES: 'Digestive System',
+  SKIN_LIMBS: 'Integumentary System'
+}
+
+const ORGAN_COLORS = {
+  BRAIN: '#b280ff',
+  HEART: '#ff3355',
+  LUNGS: '#33b2ff',
+  LIVER: '#ff9933',
+  STOMACH: '#ff66b2',
+  KIDNEYS: '#33ff99',
+  INTESTINES: '#eeee33',
+  SKIN_LIMBS: '#33d399'
+}
+
+const CALLOUT_POSITIONS = {
+  BRAIN: { top: '10%', left: '56%', lineDirection: 'left' },
+  HEART: { top: '28%', left: '56%', lineDirection: 'left' },
+  LUNGS: { top: '26%', right: '56%', lineDirection: 'right' },
+  LIVER: { top: '40%', right: '56%', lineDirection: 'right' },
+  STOMACH: { top: '40%', left: '56%', lineDirection: 'left' },
+  KIDNEYS: { top: '50%', left: '56%', lineDirection: 'left' },
+  INTESTINES: { top: '58%', right: '56%', lineDirection: 'right' },
+  SKIN_LIMBS: { top: '74%', left: '56%', lineDirection: 'left' }
+}
+
+const ORGAN_LIGHT_COLORS = {
+  BRAIN: 0xb280ff,
+  HEART: 0xff3355,
+  LUNGS: 0x33b2ff,
+  LIVER: 0xff9933,
+  STOMACH: 0xff66b2,
+  KIDNEYS: 0x33ff99,
+  INTESTINES: 0xeeee33,
+}
+
 function resolveModelKey(gender) {
   const value = String(gender ?? 'MALE').trim().toUpperCase()
   return value === 'FEMALE' ? 'FEMALE' : 'MALE'
 }
 
-export default function HumanoidFigure({ gender = 'MALE' }) {
+export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegionHover, activeRegion = null }) {
   const mountRef = useRef(null)
   const [loadState, setLoadState] = useState('loading')
   const [loadError, setLoadError] = useState(null)
+  const [hoveredRegion, setHoveredRegion] = useState(null)
+  const hoveredRegionRef = useRef(null)
   const modelKey = resolveModelKey(gender)
   const modelMeta = MODELS[modelKey]
+
+  useEffect(() => {
+    if (onRegionHover) {
+      onRegionHover(hoveredRegion)
+    }
+  }, [hoveredRegion, onRegionHover])
 
   useEffect(() => {
     const container = mountRef.current
@@ -39,68 +90,101 @@ export default function HumanoidFigure({ gender = 'MALE' }) {
     setLoadState('loading')
     setLoadError(null)
 
+    /* ── Scene ─────────────────────────────────────────── */
     const scene = new THREE.Scene()
-    scene.background = new THREE.Color(0x0c1a14)
-    scene.fog = new THREE.FogExp2(0x0c1a14, 0.07)
+    scene.background = new THREE.Color(0x060e0a)
+    scene.fog = new THREE.FogExp2(0x060e0a, 0.04)
 
-    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100)
-    camera.position.set(0, 0.1, 5.5)
-    camera.lookAt(0, 0.2, 0)
+    /* ── Camera – pulled back for full head-to-toe view ── */
+    const camera = new THREE.PerspectiveCamera(36, width / height, 0.1, 100)
+    camera.position.set(0, 0.05, 6.4)
+    camera.lookAt(0, 0.1, 0)
 
+    /* ── Renderer ──────────────────────────────────────── */
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     renderer.setSize(width, height)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.toneMappingExposure = 1.15
+    renderer.toneMappingExposure = 1.25
     container.appendChild(renderer.domElement)
 
-    scene.add(new THREE.AmbientLight(0x34d399, 0.35))
-    const key = new THREE.DirectionalLight(0x5eead4, 1.0)
-    key.position.set(2, 4, 5)
-    scene.add(key)
-    const rim = new THREE.DirectionalLight(0x10b981, 0.6)
-    rim.position.set(-3, 2, -2)
-    scene.add(rim)
+    /* ── Lighting – enhanced for organ glow ────────────── */
+    scene.add(new THREE.AmbientLight(0x34d399, 0.2))
+    const keyLight = new THREE.DirectionalLight(0x5eead4, 0.7)
+    keyLight.position.set(2, 4, 5)
+    scene.add(keyLight)
+    const rimLight = new THREE.DirectionalLight(0x10b981, 0.35)
+    rimLight.position.set(-3, 2, -2)
+    scene.add(rimLight)
+    const backLight = new THREE.DirectionalLight(0x064e3b, 0.2)
+    backLight.position.set(0, -1, -4)
+    scene.add(backLight)
 
     const humanoid = new THREE.Group()
     scene.add(humanoid)
 
+    /* ── Holographic Scan Platform ─────────────────────── */
     const pedestal = new THREE.Group()
-    pedestal.position.y = -1.85
+    pedestal.position.y = -1.95
+
+    // Grid floor plane
+    const gridGeo = new THREE.PlaneGeometry(3.2, 3.2, 24, 24)
+    const gridMat = new THREE.MeshBasicMaterial({
+      color: 0x34d399,
+      transparent: true,
+      opacity: 0.04,
+      wireframe: true,
+      side: THREE.DoubleSide,
+    })
+    const gridMesh = new THREE.Mesh(gridGeo, gridMat)
+    gridMesh.rotation.x = -Math.PI / 2
+    gridMesh.position.y = 0.005
+    pedestal.add(gridMesh)
+
+    // Platform base
     pedestal.add(new THREE.Mesh(
-      new THREE.BoxGeometry(1.5, 0.04, 1.5),
-      new THREE.MeshPhysicalMaterial({ color: 0x0c1a14, metalness: 0.85, roughness: 0.25 })
+      new THREE.CylinderGeometry(1.1, 1.2, 0.03, 64),
+      new THREE.MeshPhysicalMaterial({
+        color: 0x060e0a,
+        metalness: 0.9,
+        roughness: 0.2,
+        transparent: true,
+        opacity: 0.8,
+      })
     ))
-    const rings = [0.5, 0.66, 0.82].map((r, i) => {
+
+    // Concentric scan rings
+    const ringRadii = [0.35, 0.5, 0.65, 0.8, 0.95, 1.1, 1.25]
+    const rings = ringRadii.map((r, i) => {
       const ring = new THREE.Mesh(
-        new THREE.RingGeometry(r, r + 0.01, 64),
+        new THREE.RingGeometry(r, r + 0.006, 80),
         new THREE.MeshBasicMaterial({
-          color: i === 0 ? 0x5eead4 : 0x34d399,
+          color: i < 3 ? 0x5eead4 : 0x34d399,
           transparent: true,
-          opacity: 0.35 - i * 0.08,
+          opacity: 0.28 - i * 0.03,
           side: THREE.DoubleSide,
         })
       )
       ring.rotation.x = -Math.PI / 2
-      ring.position.y = 0.025 + i * 0.004
-      ring.userData.speed = 0.25 + i * 0.12
+      ring.position.y = 0.02 + i * 0.002
+      ring.userData.speed = 0.12 + i * 0.06
       ring.userData.dir = i % 2 === 0 ? 1 : -1
       pedestal.add(ring)
       return ring
     })
+
     scene.add(pedestal)
 
+    /* ── Raycaster & interaction state ─────────────────── */
     const raycaster = new THREE.Raycaster()
     const mouse = new THREE.Vector2(-10, -10)
-    const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)
-    const intersect = new THREE.Vector3()
     const clock = new THREE.Clock()
 
     let originals = []
-    let offsets = []
     let particleGeo = null
     let hexMeshes = []
-    let heartLight = null
+    let organLights = []
+    let cachedBox = null
     const disposables = []
 
     const onMouseMove = (e) => {
@@ -110,57 +194,115 @@ export default function HumanoidFigure({ gender = 'MALE' }) {
     }
     container.addEventListener('mousemove', onMouseMove)
 
+    /* ── Organ spatial classifier (unchanged) ──────────── */
+    const getOrganFromPoint = (point, box) => {
+      if (!box) return 'SKIN_LIMBS'
+      const center = box.getCenter(new THREE.Vector3())
+      const relY = (point.y - box.min.y) / (box.max.y - box.min.y)
+      const relX = (point.x - center.x) / (box.max.x - box.min.x + 0.001)
+      const relZ = (point.z - box.min.z) / (box.max.z - box.min.z + 0.001)
+
+      if (relY >= 0.86) {
+        if (Math.abs(relX) < 0.16) return 'BRAIN'
+      }
+      if (relY >= 0.64 && relY < 0.82) {
+        if (Math.abs(relX) < 0.25) {
+          if (relY >= 0.64 && relY < 0.74 && relX > -0.06 && relX < 0.1 && relZ >= 0.5) {
+            return 'HEART'
+          }
+          return 'LUNGS'
+        }
+      }
+      if (relY >= 0.52 && relY < 0.64) {
+        if (Math.abs(relX) < 0.22) {
+          if (relZ < 0.35 && Math.abs(relX) > 0.06 && Math.abs(relX) < 0.2) {
+            return 'KIDNEYS'
+          }
+          if (relX <= 0.0) {
+            return 'LIVER'
+          }
+          return 'STOMACH'
+        }
+      }
+      if (relY >= 0.38 && relY < 0.52) {
+        if (Math.abs(relX) < 0.2) {
+          if (relZ < 0.35 && Math.abs(relX) > 0.06 && relY >= 0.48) {
+            return 'KIDNEYS'
+          }
+          return 'INTESTINES'
+        }
+      }
+      return 'SKIN_LIMBS'
+    }
+
+    /* ── Click handler (unchanged) ─────────────────────── */
+    const onCanvasClick = (e) => {
+      if (!particleGeo || !originals.length) return
+      
+      raycaster.setFromCamera(mouse, camera)
+      raycaster.params.Points.threshold = 0.15
+      const hits = raycaster.intersectObjects(humanoid.children, true)
+      const pointsHit = hits.find(h => h.object.isPoints)
+      
+      if (pointsHit) {
+        const pointIndex = pointsHit.index
+        const point = originals[pointIndex]
+        if (point) {
+          const organ = getOrganFromPoint(point, cachedBox)
+          if (onRegionClick) {
+            onRegionClick(organ)
+          }
+        }
+      }
+    }
+    container.addEventListener('click', onCanvasClick)
+
+    /* ── Animation loop ────────────────────────────────── */
     const animate = () => {
       frame = requestAnimationFrame(animate)
       const t = clock.getElapsedTime()
+
+      // Continuous rotation
       humanoid.rotation.y = t * 0.22
-      rings.forEach((ring) => {
-        ring.rotation.z = t * ring.userData.speed * ring.userData.dir
-      })
 
       if (particleGeo && originals.length) {
         raycaster.setFromCamera(mouse, camera)
-        raycaster.ray.intersectPlane(plane, intersect)
-        const localHit = intersect.clone()
-        humanoid.worldToLocal(localHit)
 
-        const posAttr = particleGeo.attributes.position
-        originals.forEach((orig, i) => {
-          const dist = orig.distanceTo(localHit)
-          const push = Math.max(0, 1 - dist / 0.45) * 0.18
-          if (push > 0) {
-            const dir = orig.clone().sub(localHit)
-            if (dir.lengthSq() > 0.0001) dir.normalize().multiplyScalar(push)
-            offsets[i].lerp(dir, 0.12)
-          } else {
-            offsets[i].lerp(new THREE.Vector3(), 0.06)
+        // Hover detection
+        raycaster.params.Points.threshold = 0.15
+        const hits = raycaster.intersectObjects(humanoid.children, true)
+        const pointsHit = hits.find(h => h.object.isPoints)
+        
+        if (pointsHit) {
+          renderer.domElement.style.cursor = 'pointer'
+          const point = originals[pointsHit.index]
+          if (point) {
+            const organ = getOrganFromPoint(point, cachedBox)
+            if (hoveredRegionRef.current !== organ) {
+              hoveredRegionRef.current = organ
+              setHoveredRegion(organ)
+            }
           }
-          const p = orig.clone().add(offsets[i])
-          posAttr.setXYZ(i, p.x, p.y, p.z)
-        })
-        posAttr.needsUpdate = true
-
-        hexMeshes.forEach(({ mesh, index }) => {
-          const orig = originals[index]
-          const dist = orig.distanceTo(localHit)
-          const push = Math.max(0, 1 - dist / 0.4) * 0.25
-          if (push > 0) {
-            mesh.position.copy(orig).add(orig.clone().sub(localHit).normalize().multiplyScalar(push))
-            mesh.material.opacity = 0.9
-          } else {
-            mesh.position.copy(orig)
-            mesh.material.opacity = 0.4
+        } else {
+          renderer.domElement.style.cursor = 'default'
+          if (hoveredRegionRef.current !== null) {
+            hoveredRegionRef.current = null
+            setHoveredRegion(null)
           }
-          mesh.lookAt(camera.position)
-        })
+        }
 
-        if (heartLight) heartLight.intensity = 1.2 + Math.sin(t * 2.2) * 0.35
+        // Per-organ glow light pulsing
+        for (let i = 0, len = organLights.length; i < len; i++) {
+          const { light, baseIntensity, speed } = organLights[i]
+          light.intensity = baseIntensity + Math.sin(t * speed) * (baseIntensity * 0.3)
+        }
       }
 
       renderer.render(scene, camera)
     }
     animate()
 
+    /* ── OBJ model loading ─────────────────────────────── */
     const loader = new OBJLoader()
     loader.load(
       modelMeta.url,
@@ -179,22 +321,51 @@ export default function HumanoidFigure({ gender = 'MALE' }) {
         })
 
         const normalized = normalizeMeshVertices(rawVerts, 3.6)
-        const points = sampleVertices(normalized, 2400)
+        const points = sampleVertices(normalized, 3800)
         const types = classifyParticles(points)
 
         originals = points.map((p) => p.clone())
-        offsets = points.map(() => new THREE.Vector3())
 
         const positions = new Float32Array(points.length * 3)
         const colors = new Float32Array(points.length * 3)
         const c = new THREE.Color()
+        const box = new THREE.Box3().setFromPoints(points)
+        cachedBox = box
 
+        /* Colour assignment: dim body, vivid organs */
         points.forEach((p, i) => {
           positions[i * 3] = p.x
           positions[i * 3 + 1] = p.y
           positions[i * 3 + 2] = p.z
-          if (types[i] === 1) c.setRGB(1.0, 0.3, 0.42)
-          else c.setRGB(0.52, 0.92, 0.78)
+          
+          const organ = getOrganFromPoint(p, box)
+          switch (organ) {
+            case 'BRAIN':
+              c.setRGB(0.7, 0.3, 0.9)
+              break
+            case 'HEART':
+              c.setRGB(1.0, 0.15, 0.3)
+              break
+            case 'LUNGS':
+              c.setRGB(0.2, 0.6, 1.0)
+              break
+            case 'LIVER':
+              c.setRGB(1.0, 0.5, 0.1)
+              break
+            case 'STOMACH':
+              c.setRGB(1.0, 0.4, 0.7)
+              break
+            case 'KIDNEYS':
+              c.setRGB(0.1, 0.8, 0.4)
+              break
+            case 'INTESTINES':
+              c.setRGB(0.9, 0.8, 0.1)
+              break
+            default:
+              // Dim translucent body outline
+              c.setRGB(0.12, 0.35, 0.24)
+          }
+          
           colors[i * 3] = c.r
           colors[i * 3 + 1] = c.g
           colors[i * 3 + 2] = c.b
@@ -206,49 +377,79 @@ export default function HumanoidFigure({ gender = 'MALE' }) {
         disposables.push(particleGeo)
 
         humanoid.add(new THREE.Points(particleGeo, new THREE.PointsMaterial({
-          size: 0.028,
+          size: 0.026,
           vertexColors: true,
           transparent: true,
-          opacity: 0.9,
+          opacity: 0.88,
           blending: THREE.AdditiveBlending,
           depthWrite: false,
           sizeAttenuation: true,
         })))
 
+        /* Plexus network lines */
         const plexusGeo = new THREE.BufferGeometry()
         plexusGeo.setAttribute('position', new THREE.Float32BufferAttribute(buildPlexusLines(points), 3))
         disposables.push(plexusGeo)
         humanoid.add(new THREE.LineSegments(
           plexusGeo,
-          new THREE.LineBasicMaterial({ color: 0x34d399, transparent: true, opacity: 0.12 })
+          new THREE.LineBasicMaterial({ color: 0x34d399, transparent: true, opacity: 0.08 })
         ))
 
+        /* Hex overlays */
         const hexGeo = createHexGeometry(0.016)
         disposables.push(hexGeo)
-        const hexStep = Math.max(1, Math.floor(points.length / 500))
+        const hexStep = Math.max(1, Math.floor(points.length / 600))
         for (let i = 0; i < points.length; i += hexStep) {
+          const organ = getOrganFromPoint(points[i], box)
+          let hexColor = 0x5eead4
+          if (organ === 'BRAIN') hexColor = 0xb280ff
+          else if (organ === 'HEART') hexColor = 0xff3355
+          else if (organ === 'LUNGS') hexColor = 0x33b2ff
+          else if (organ === 'LIVER') hexColor = 0xff9933
+          else if (organ === 'STOMACH') hexColor = 0xff66b2
+          else if (organ === 'KIDNEYS') hexColor = 0x33ff99
+          else if (organ === 'INTESTINES') hexColor = 0xeeee33
+
           const mesh = new THREE.Mesh(hexGeo, new THREE.MeshBasicMaterial({
-            color: types[i] === 1 ? 0xff4466 : 0x5eead4,
+            color: hexColor,
             transparent: true,
-            opacity: 0.45,
+            opacity: organ === 'SKIN_LIMBS' ? 0.2 : 0.4,
             side: THREE.DoubleSide,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
           }))
           mesh.position.copy(points[i])
+          mesh.lookAt(camera.position)
           humanoid.add(mesh)
-          hexMeshes.push({ mesh, index: i })
+          hexMeshes.push({ mesh })
         }
 
-        const chestPoints = points.filter((_, i) => types[i] === 1)
-        if (chestPoints.length) {
-          const chestCenter = new THREE.Vector3()
-          chestPoints.forEach((p) => chestCenter.add(p))
-          chestCenter.divideScalar(chestPoints.length)
-          heartLight = new THREE.PointLight(0xff3355, 1.4, 2.5)
-          heartLight.position.copy(chestCenter)
-          humanoid.add(heartLight)
-        }
+        /* Per-organ glow PointLights */
+        const organGroups = {}
+        points.forEach((p) => {
+          const organ = getOrganFromPoint(p, box)
+          if (organ !== 'SKIN_LIMBS') {
+            if (!organGroups[organ]) organGroups[organ] = []
+            organGroups[organ].push(p)
+          }
+        })
+
+        organLights = Object.entries(organGroups).map(([organ, pts]) => {
+          const center = new THREE.Vector3()
+          pts.forEach(p => center.add(p))
+          center.divideScalar(pts.length)
+          const color = ORGAN_LIGHT_COLORS[organ] || 0x5eead4
+          const intensity = organ === 'HEART' ? 1.6 : 0.7
+          const distance = organ === 'HEART' ? 2.5 : 1.8
+          const light = new THREE.PointLight(color, intensity, distance)
+          light.position.copy(center)
+          humanoid.add(light)
+          return {
+            light,
+            baseIntensity: intensity,
+            speed: organ === 'HEART' ? 2.2 : (1.0 + Math.random() * 0.8),
+          }
+        })
 
         setLoadState('ready')
       },
@@ -262,6 +463,7 @@ export default function HumanoidFigure({ gender = 'MALE' }) {
       }
     )
 
+    /* ── Resize ────────────────────────────────────────── */
     const onResize = () => {
       const w = container.clientWidth
       const h = container.clientHeight
@@ -271,11 +473,13 @@ export default function HumanoidFigure({ gender = 'MALE' }) {
     }
     window.addEventListener('resize', onResize)
 
+    /* ── Cleanup ───────────────────────────────────────── */
     return () => {
       disposed = true
       cancelAnimationFrame(frame)
       window.removeEventListener('resize', onResize)
       container.removeEventListener('mousemove', onMouseMove)
+      container.removeEventListener('click', onCanvasClick)
       hexMeshes.forEach(({ mesh }) => mesh.material?.dispose())
       disposables.forEach((d) => d.dispose())
       renderer.dispose()
@@ -283,34 +487,127 @@ export default function HumanoidFigure({ gender = 'MALE' }) {
     }
   }, [modelKey, modelMeta.url])
 
+  /* ── Callout state ───────────────────────────────────── */
+  const displayRegion = hoveredRegion || activeRegion
+  const isCalloutActive = displayRegion !== null
+  const calloutColor = ORGAN_COLORS[displayRegion] || '#33d399'
+  const calloutSystem = ORGAN_SYSTEMS[displayRegion] || 'Integumentary System'
+  const calloutPos = CALLOUT_POSITIONS[displayRegion]
+  const displayLabel = displayRegion === 'SKIN_LIMBS' ? 'SKIN & LIMBS' : displayRegion
+
   return (
-    <div className="relative w-full h-full min-h-[560px] rounded-2xl overflow-hidden bg-[#0c1a14]/40">
+    <div className="relative w-full h-full rounded-2xl overflow-hidden" style={{ background: '#060e0a' }}>
       <div ref={mountRef} className="absolute inset-0" />
 
+
+
+      {/* Minimal corner HUD indicators */}
+      <div className="absolute top-3.5 left-4 pointer-events-none select-none z-10">
+        <div className="text-[9px] text-accent2/50 font-mono tracking-widest">BIOMETRIC SCAN</div>
+        <div className="text-[8px] text-white/30 font-mono mt-0.5">{modelMeta.label} · {modelKey}</div>
+      </div>
+      <div className="absolute top-3.5 right-4 pointer-events-none select-none text-right z-10">
+        <div className="text-[8px] text-accent2/40 font-mono">PARTICLE SCAN: ACTIVE</div>
+      </div>
+
+      {/* ══ FLOATING CALLOUT TOOLTIP ══ */}
+      {isCalloutActive && calloutPos && (
+        <div 
+          className="absolute z-20 flex items-center pointer-events-none transition-all duration-300"
+          style={{
+            top: calloutPos.top,
+            ...(calloutPos.lineDirection === 'left' 
+              ? { left: calloutPos.left, flexDirection: 'row-reverse' } 
+              : { right: calloutPos.right, flexDirection: 'row' })
+          }}
+        >
+          {/* Callout info box */}
+          <div 
+            className="premium-glass p-3 rounded-xl border text-left min-w-[175px] shadow-lg animate-fade-in"
+            style={{
+              borderColor: `${calloutColor}50`,
+              boxShadow: `0 4px 20px ${calloutColor}18, 0 0 1px 1px rgba(255, 255, 255, 0.04) inset`,
+              background: 'rgba(6, 14, 10, 0.78)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)'
+            }}
+          >
+            <div 
+              className="text-[10px] font-mono font-bold uppercase tracking-wider mb-1.5 flex items-center justify-between"
+              style={{ color: calloutColor }}
+            >
+              <span>{displayLabel}</span>
+              <span className="text-[7px] opacity-70 font-normal tracking-normal px-1.5 py-0.5 rounded bg-white/5 border border-white/10 uppercase">
+                {activeRegion === displayRegion ? 'Active' : 'Hover'}
+              </span>
+            </div>
+            
+            <div className="space-y-0.5 text-[8px] font-mono text-white/75 leading-normal">
+              <div><span className="opacity-40">| </span>{displayLabel}</div>
+              <div><span className="opacity-40">| </span>{calloutSystem}</div>
+              <div><span className="opacity-40">| </span>Status: Actively Monitored</div>
+              <div><span className="opacity-40">| </span>Current Focus</div>
+            </div>
+          </div>
+
+          {/* Dashed connector line */}
+          <div 
+            className="border-t border-dashed h-0 transition-all duration-300"
+            style={{
+              borderColor: calloutColor,
+              width: '40px',
+              opacity: 0.8,
+              filter: `drop-shadow(0 0 3px ${calloutColor})`
+            }}
+          />
+
+          {/* Pulsing target dot */}
+          <div 
+            className="w-2.5 h-2.5 rounded-full relative flex items-center justify-center"
+            style={{
+              backgroundColor: calloutColor,
+              boxShadow: `0 0 10px 3px ${calloutColor}`
+            }}
+          >
+            <span 
+              className="absolute w-5 h-5 rounded-full animate-ping opacity-50"
+              style={{ backgroundColor: calloutColor }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ══ LOADING / ERROR ══ */}
       {loadState === 'loading' && (
-        <div className="absolute inset-0 flex items-center justify-center text-accent2/60 text-sm">
+        <div className="absolute inset-0 flex items-center justify-center text-accent2/60 text-sm z-30">
           Loading {modelKey === 'FEMALE' ? 'female' : 'male'} scan mesh...
         </div>
       )}
       {loadState === 'error' && (
-        <div className="absolute inset-0 flex items-center justify-center text-red-400 text-sm">
+        <div className="absolute inset-0 flex items-center justify-center text-red-400 text-sm z-30">
           {loadError}
         </div>
       )}
 
-      <div className="absolute top-4 left-4 pointer-events-none select-none">
-        <div className="text-[10px] text-accent2/70 font-mono tracking-widest mb-1">BIOMETRICS</div>
-        <div className="text-lg font-mono text-white/90">98 <span className="text-accent2 text-sm">5,178</span></div>
+      {/* ══ BOTTOM: TARGET AREA ══ */}
+      <div className="absolute bottom-14 left-2.5 pointer-events-none select-none z-10">
+        <div className="text-[9px] text-accent2/60 font-mono tracking-widest mb-1 uppercase">TARGET AREA</div>
+        <div className="text-base font-mono text-white/90 tracking-wider uppercase font-semibold">
+          {hoveredRegion === 'SKIN_LIMBS' ? 'SKIN & LIMBS' : (activeRegion === 'SKIN_LIMBS' ? 'SKIN & LIMBS' : (hoveredRegion || activeRegion || 'FULL BODY'))}
+        </div>
+        {activeRegion && (
+          <div className="text-[8px] text-accent2 font-mono mt-0.5 animate-pulse">
+            FILTER LOCKED
+          </div>
+        )}
       </div>
 
-      <div className="absolute top-4 right-4 pointer-events-none select-none text-right">
-        <div className="text-[9px] text-accent2/60 font-mono">PARTICLE SCAN: ACTIVE</div>
-        <div className="text-[9px] text-white/40 font-mono mt-1">{modelMeta.label}</div>
-        <div className="text-[8px] text-accent2/40 font-mono mt-0.5">{modelKey}</div>
-      </div>
-
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-none">
-        <div className="text-[9px] text-accent2/40 font-mono tracking-[0.3em]">HOLOGRAPHIC PARTICLE HUMANOID</div>
+      {/* ══ BOTTOM: FOOTER LABEL ══ */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 pointer-events-none text-center z-10">
+        <div className="text-[7px] text-accent2/40 font-mono tracking-[0.18em] mb-0.5">
+          CLICK ORGAN REGIONS TO SCAN & DIAGNOSE
+        </div>
+        <div className="text-[8px] text-accent2/30 font-mono tracking-[0.25em]">HOLOGRAPHIC PARTICLE HUMANOID</div>
       </div>
     </div>
   )
