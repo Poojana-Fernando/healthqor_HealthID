@@ -9,6 +9,7 @@ import LoginPage from './pages/LoginPage'
 import EChannelingPage from './pages/EChannelingPage'
 import AdminPage from './pages/AdminPage'
 import SupportPage from './pages/SupportPage'
+import GoogleCallbackPage from './pages/GoogleCallbackPage'
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
         <Route path="/echanneling" element={<EChannelingPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/support" element={<SupportPage />} />

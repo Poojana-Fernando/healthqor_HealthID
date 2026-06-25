@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { startGoogleOAuth } from '../utils/googleAuth'
 
 export default function LoginPage() {
-  const { login, googleLogin } = useAuth()
+  const { login } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -11,29 +12,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
 
   const handleGoogle = () => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
-    if (!clientId) {
-      setError('Google OAuth not configured. Set VITE_GOOGLE_CLIENT_ID.')
-      return
+    setError('')
+    try {
+      startGoogleOAuth()
+    } catch (e) {
+      setError(e.message)
     }
-    const redirectUri = window.location.origin + '/login'
-    const scope = 'openid profile email'
-    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}`
-    window.location.href = url
   }
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const code = params.get('code')
-    if (code) {
-      setLoading(true)
-      const redirectUri = window.location.origin + '/login'
-      googleLogin(code, redirectUri)
-        .then(() => navigate('/profile'))
-        .catch((e) => setError(e.message))
-        .finally(() => setLoading(false))
-    }
-  }, [googleLogin, navigate])
 
   const submit = async (e) => {
     e.preventDefault()
