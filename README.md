@@ -12,7 +12,7 @@ Digital Health Identity platform for Sri Lanka — encrypted health records, AI 
 |---------|-------------|
 | **Health ID** | Unique ID generated on signup: `HID-{COUNTRY}-{YEAR}-{HASH}-{RANDOM}` |
 | **Encrypted records** | AES-256 encryption for NIC, allergies, and sensitive fields |
-| **Auth** | JWT (HttpOnly cookies), email/password, Google OAuth2 |
+| **Auth** | JWT (HttpOnly cookies), email/password, Google OAuth2, GitHub OAuth |
 | **AI Symptom Checker** | OpenAI triage with what-not-to-do guidance and recommended articles |
 | **AI Health Analysis** | Personalised diet recommendations from profile data |
 | **3D Humanoid** | Three.js particle viewer (male/female models by gender) |
@@ -94,6 +94,13 @@ Edit `.env` and set these **required** values:
 | `GOOGLE_CLIENT_ID` | — | Google OAuth client ID (Web application) |
 | `GOOGLE_CLIENT_SECRET` | — | Google OAuth client secret |
 | `VITE_GOOGLE_CLIENT_ID` | — | Same client ID as `GOOGLE_CLIENT_ID` (loaded from root `.env` by Vite) |
+| `GITHUB_CLIENT_ID` | — | GitHub OAuth App client ID |
+| `GITHUB_CLIENT_SECRET` | — | GitHub OAuth App client secret |
+| `VITE_GITHUB_CLIENT_ID` | — | Same client ID as `GITHUB_CLIENT_ID` |
+| `FRONTEND_ORIGIN` | `http://localhost:5173` | CORS origin |
+| `CACHE_TYPE` | `simple` | Use `simple` locally without Redis |
+| `SPRING_PROFILES_ACTIVE` | `dev` | Dev profile disables Redis requirement |
+| `VITE_API_URL` | *(empty)* | Leave empty — Vite proxies to backend |
 
 **Google Cloud Console setup:** Create an OAuth 2.0 **Web application** client and add this authorized redirect URI:
 
@@ -101,11 +108,13 @@ Edit `.env` and set these **required** values:
 http://localhost:5173/auth/google/callback
 ```
 
-For production, add your deployed frontend URL with the same path, e.g. `https://your-domain.com/auth/google/callback`.
-| `FRONTEND_ORIGIN` | `http://localhost:5173` | CORS origin |
-| `CACHE_TYPE` | `simple` | Use `simple` locally without Redis |
-| `SPRING_PROFILES_ACTIVE` | `dev` | Dev profile disables Redis requirement |
-| `VITE_API_URL` | *(empty)* | Leave empty — Vite proxies to backend |
+**GitHub OAuth App setup:** Go to GitHub → Settings → Developer settings → OAuth Apps → New OAuth App. Set the **Authorization callback URL** to:
+
+```
+http://localhost:5173/auth/github/callback
+```
+
+For production, add your deployed frontend URLs for both providers.
 
 > **Never commit `.env`** — it is listed in `.gitignore`.
 
@@ -166,6 +175,7 @@ CACHE_TYPE=simple
 | POST | `/api/auth/register` | Public |
 | POST | `/api/auth/login` | Public |
 | POST | `/api/auth/google` | Public |
+| POST | `/api/auth/github` | Public |
 | GET | `/api/profile/me` | Authenticated |
 | PUT | `/api/profile/me` | Authenticated |
 | POST | `/api/ai/symptom-check` | Authenticated |

@@ -30,6 +30,7 @@ export const api = {
   register: (data) => request('/api/auth/register', { method: 'POST', body: JSON.stringify(data) }),
   login: (data) => request('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
   googleAuth: (data) => request('/api/auth/google', { method: 'POST', body: JSON.stringify(data) }),
+  githubAuth: (data) => request('/api/auth/github', { method: 'POST', body: JSON.stringify(data) }),
   refresh: () => request('/api/auth/refresh', { method: 'POST' }),
   getProfile: () => request('/api/profile/me'),
   updateProfile: (data) => request('/api/profile/me', { method: 'PUT', body: JSON.stringify(data) }),

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { startGoogleOAuth } from '../utils/googleAuth'
+import { isGitHubOAuthConfigured, startGitHubOAuth } from '../utils/githubAuth'
 
 const COUNTRIES = [
   { code: 'LK', name: 'Sri Lanka' },
@@ -41,6 +42,15 @@ export default function SignupPage() {
     setError('')
     try {
       startGoogleOAuth()
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
+  const handleGitHub = () => {
+    setError('')
+    try {
+      startGitHubOAuth()
     } catch (e) {
       setError(e.message)
     }
@@ -96,10 +106,19 @@ export default function SignupPage() {
 
       <button
         onClick={handleGoogle}
-        className="w-full glass flex items-center justify-center gap-3 py-3 rounded-xl mb-6 hover:border-accent transition"
+        className="w-full glass flex items-center justify-center gap-3 py-3 rounded-xl mb-3 hover:border-accent transition"
       >
         <span className="text-xl">G</span> Continue with Google
       </button>
+      {isGitHubOAuthConfigured() && (
+        <button
+          onClick={handleGitHub}
+          className="w-full glass flex items-center justify-center gap-3 py-3 rounded-xl mb-6 hover:border-accent transition"
+        >
+          <span className="text-xl">GH</span> Continue with GitHub
+        </button>
+      )}
+      {!isGitHubOAuthConfigured() && <div className="mb-6" />}
 
 
 

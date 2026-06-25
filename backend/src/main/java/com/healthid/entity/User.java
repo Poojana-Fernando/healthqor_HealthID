@@ -47,6 +47,9 @@ public class User {
     @Column(name = "google_sub")
     private String googleSub;
 
+    @Column(name = "github_sub")
+    private String githubSub;
+
     @Column(name = "profile_image_url")
     private String profileImageUrl;
 

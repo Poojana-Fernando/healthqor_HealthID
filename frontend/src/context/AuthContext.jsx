@@ -44,13 +44,20 @@ export function AuthProvider({ children }) {
     return res
   }
 
+  const githubLogin = async (code, redirectUri) => {
+    const res = await api.githubAuth({ code, redirectUri })
+    setUser(res)
+    await refreshProfile()
+    return res
+  }
+
   const logout = () => {
     setUser(null)
     setProfile(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, login, register, googleLogin, logout, refreshProfile, setProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, login, register, googleLogin, githubLogin, logout, refreshProfile, setProfile }}>
       {children}
     </AuthContext.Provider>
   )

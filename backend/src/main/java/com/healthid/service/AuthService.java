@@ -3,6 +3,7 @@ package com.healthid.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.healthid.dto.auth.AuthResponse;
+import com.healthid.dto.auth.GitHubAuthRequest;
 import com.healthid.dto.auth.GoogleAuthRequest;
 import com.healthid.dto.auth.LoginRequest;
 import com.healthid.dto.auth.RegisterRequest;
@@ -34,6 +35,7 @@ import org.springframework.web.client.RestTemplate;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
@@ -56,6 +58,12 @@ public class AuthService {
 
     @Value("${spring.security.oauth2.client.registration.google.client-secret}")
     private String googleClientSecret;
+
+    @Value("${github.client.id}")
+    private String githubClientId;
+
+    @Value("${github.client.secret}")
+    private String githubClientSecret;
 
     @Value("${frontend.origin}")
     private String frontendOrigin;
@@ -244,6 +252,148 @@ public class AuthService {
         }
     }
 
+    @Transactional
+    public AuthResponse githubAuth(GitHubAuthRequest request, HttpServletResponse response) {
+        validateGitHubConfig();
+        try {
+            String redirectUri = request.getRedirectUri() != null && !request.getRedirectUri().isBlank()
+                    ? request.getRedirectUri()
+                    : frontendOrigin + "/auth/github/callback";
+
+            MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+            params.add("code", request.getCode());
+            params.add("client_id", githubClientId);
+            params.add("client_secret", githubClientSecret);
+            params.add("redirect_uri", redirectUri);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+            ResponseEntity<String> tokenResponse;
+            try {
+                tokenResponse = restTemplate.postForEntity(
+                        "https://github.com/login/oauth/access_token",
+                        new HttpEntity<>(params, headers),
+                        String.class
+                );
+            } catch (HttpStatusCodeException e) {
+                throw oauthTokenError("GitHub", e);
+            }
+
+            JsonNode tokenJson = objectMapper.readTree(tokenResponse.getBody());
+            if (tokenJson.has("error")) {
+                String description = tokenJson.has("error_description")
+                        ? tokenJson.get("error_description").asText()
+                        : tokenJson.get("error").asText();
+                throw new BadRequestException("GitHub token exchange failed: " + description);
+            }
+            if (!tokenJson.has("access_token")) {
+                throw new BadRequestException("GitHub token exchange failed: no access token returned");
+            }
+            String accessToken = tokenJson.get("access_token").asText();
+
+            HttpHeaders userHeaders = new HttpHeaders();
+            userHeaders.setBearerAuth(accessToken);
+            userHeaders.setAccept(List.of(MediaType.APPLICATION_JSON));
+            ResponseEntity<String> userInfoResponse = restTemplate.exchange(
+                    "https://api.github.com/user",
+                    HttpMethod.GET,
+                    new HttpEntity<>(userHeaders),
+                    String.class
+            );
+
+            JsonNode userInfo = objectMapper.readTree(userInfoResponse.getBody());
+            String githubSub = String.valueOf(userInfo.get("id").asLong());
+            String name = userInfo.has("name") && !userInfo.get("name").isNull()
+                    ? userInfo.get("name").asText()
+                    : userInfo.get("login").asText();
+            String picture = userInfo.has("avatar_url") ? userInfo.get("avatar_url").asText() : null;
+            String email = resolveGitHubEmail(accessToken, userInfo);
+
+            User user = userRepository.findByGithubSub(githubSub)
+                    .or(() -> userRepository.findByEmail(email))
+                    .orElseGet(() -> registerGithubUser(githubSub, email, name, picture));
+
+            if (user.getGithubSub() == null) {
+                user.setGithubSub(githubSub);
+            }
+            if (picture != null) {
+                user.setProfileImageUrl(picture);
+            }
+            user.setName(name);
+            userRepository.save(user);
+
+            auditLogService.log(user.getId(), "GITHUB_LOGIN", "User", user.getId());
+            setTokenCookies(user, response);
+            return toAuthResponse(user);
+        } catch (BadRequestException | UnauthorizedException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BadRequestException("GitHub authentication failed: " + e.getMessage());
+        }
+    }
+
+    private void validateGitHubConfig() {
+        if (githubClientId == null || githubClientId.isBlank() || "your_github_client_id".equals(githubClientId)) {
+            throw new BadRequestException("GitHub OAuth is not configured on the server. Set GITHUB_CLIENT_ID in .env");
+        }
+        if (githubClientSecret == null || githubClientSecret.isBlank() || "your_github_client_secret".equals(githubClientSecret)) {
+            throw new BadRequestException("GitHub OAuth is not configured on the server. Set GITHUB_CLIENT_SECRET in .env");
+        }
+    }
+
+    private String resolveGitHubEmail(String accessToken, JsonNode userInfo) throws Exception {
+        if (userInfo.has("email") && !userInfo.get("email").isNull()) {
+            String email = userInfo.get("email").asText();
+            if (email != null && !email.isBlank()) {
+                return email;
+            }
+        }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+        ResponseEntity<String> emailsResponse = restTemplate.exchange(
+                "https://api.github.com/user/emails",
+                HttpMethod.GET,
+                new HttpEntity<>(headers),
+                String.class
+        );
+        JsonNode emails = objectMapper.readTree(emailsResponse.getBody());
+        if (emails.isArray()) {
+            for (JsonNode entry : emails) {
+                if (entry.has("primary") && entry.get("primary").asBoolean()
+                        && entry.has("verified") && entry.get("verified").asBoolean()) {
+                    return entry.get("email").asText();
+                }
+            }
+            for (JsonNode entry : emails) {
+                if (entry.has("verified") && entry.get("verified").asBoolean()) {
+                    return entry.get("email").asText();
+                }
+            }
+        }
+        throw new BadRequestException("GitHub account has no verified email. Make your email visible in GitHub settings or use email/password signup.");
+    }
+
+    private BadRequestException oauthTokenError(String provider, HttpStatusCodeException e) {
+        String body = e.getResponseBodyAsString();
+        if (body != null && !body.isBlank()) {
+            try {
+                JsonNode errorJson = objectMapper.readTree(body);
+                if (errorJson.has("error_description")) {
+                    return new BadRequestException(provider + " token exchange failed: " + errorJson.get("error_description").asText());
+                }
+                if (errorJson.has("error")) {
+                    return new BadRequestException(provider + " token exchange failed: " + errorJson.get("error").asText());
+                }
+            } catch (Exception ignored) {
+                return new BadRequestException(provider + " token exchange failed: " + body);
+            }
+        }
+        return new BadRequestException(provider + " token exchange failed (HTTP " + e.getStatusCode().value() + "). Check client ID, client secret, and redirect URI.");
+    }
+
     private User registerGoogleUser(String googleSub, String email, String name, String picture) {
         LocalDate defaultBirthDate = LocalDate.of(2000, 1, 1);
         String country = "LK";
@@ -275,6 +425,40 @@ public class AuthService {
         healthProfileRepository.save(profile);
 
         auditLogService.log(user.getId(), "GOOGLE_REGISTER", "User", user.getId());
+        return user;
+    }
+
+    private User registerGithubUser(String githubSub, String email, String name, String picture) {
+        LocalDate defaultBirthDate = LocalDate.of(2000, 1, 1);
+        String country = "LK";
+        String placeholderNationalId = "GITHUB-" + githubSub;
+
+        String healthId = healthIdGenerator.generate(country, defaultBirthDate, placeholderNationalId);
+        while (userRepository.existsByHealthId(healthId)) {
+            healthId = healthIdGenerator.generate(country, defaultBirthDate, placeholderNationalId);
+        }
+
+        User user = User.builder()
+                .name(name)
+                .email(email)
+                .country(country)
+                .nationalId(encryptionService.encryptNationalId(placeholderNationalId))
+                .healthId(healthId)
+                .githubSub(githubSub)
+                .profileImageUrl(picture)
+                .role(Role.CITIZEN)
+                .verified(false)
+                .build();
+        userRepository.save(user);
+
+        HealthProfile profile = HealthProfile.builder()
+                .userId(user.getId())
+                .gender(Gender.MALE)
+                .birthDate(defaultBirthDate)
+                .build();
+        healthProfileRepository.save(profile);
+
+        auditLogService.log(user.getId(), "GITHUB_REGISTER", "User", user.getId());
         return user;
     }
 
