@@ -27,6 +27,11 @@ foreach ($var in $required) {
 if (-not [Environment]::GetEnvironmentVariable('SPRING_PROFILES_ACTIVE', 'Process')) {
     [Environment]::SetEnvironmentVariable('SPRING_PROFILES_ACTIVE', 'dev', 'Process')
 }
+$profiles = [Environment]::GetEnvironmentVariable('SPRING_PROFILES_ACTIVE', 'Process')
+if ([Environment]::GetEnvironmentVariable('DB_USE_H2', 'Process') -eq 'true' -and $profiles -notmatch 'h2') {
+    [Environment]::SetEnvironmentVariable('SPRING_PROFILES_ACTIVE', "$profiles,h2", 'Process')
+    Write-Host "Using H2 database (DB_USE_H2=true)"
+}
 if (-not [Environment]::GetEnvironmentVariable('CACHE_TYPE', 'Process')) {
     [Environment]::SetEnvironmentVariable('CACHE_TYPE', 'simple', 'Process')
 }

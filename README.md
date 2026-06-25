@@ -91,13 +91,21 @@ Edit `.env` and set these **required** values:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `GOOGLE_CLIENT_ID` | — | Google OAuth (signup/login) |
-| `GOOGLE_CLIENT_SECRET` | — | Google OAuth secret |
+| `GOOGLE_CLIENT_ID` | — | Google OAuth client ID (Web application) |
+| `GOOGLE_CLIENT_SECRET` | — | Google OAuth client secret |
+| `VITE_GOOGLE_CLIENT_ID` | — | Same client ID as `GOOGLE_CLIENT_ID` (loaded from root `.env` by Vite) |
+
+**Google Cloud Console setup:** Create an OAuth 2.0 **Web application** client and add this authorized redirect URI:
+
+```
+http://localhost:5173/auth/google/callback
+```
+
+For production, add your deployed frontend URL with the same path, e.g. `https://your-domain.com/auth/google/callback`.
 | `FRONTEND_ORIGIN` | `http://localhost:5173` | CORS origin |
 | `CACHE_TYPE` | `simple` | Use `simple` locally without Redis |
 | `SPRING_PROFILES_ACTIVE` | `dev` | Dev profile disables Redis requirement |
 | `VITE_API_URL` | *(empty)* | Leave empty — Vite proxies to backend |
-| `VITE_GOOGLE_CLIENT_ID` | — | Frontend Google OAuth client ID |
 
 > **Never commit `.env`** — it is listed in `.gitignore`.
 

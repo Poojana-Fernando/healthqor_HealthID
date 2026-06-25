@@ -6,6 +6,7 @@ import com.healthid.dto.auth.AuthResponse;
 import com.healthid.dto.auth.GoogleAuthRequest;
 import com.healthid.dto.auth.LoginRequest;
 import com.healthid.dto.auth.RegisterRequest;
+import com.healthid.entity.Gender;
 import com.healthid.entity.HealthProfile;
 import com.healthid.entity.Role;
 import com.healthid.entity.User;
@@ -27,10 +28,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.stream.Collectors;
 
 @Service
@@ -140,23 +143,58 @@ public class AuthService {
 
     @Transactional
     public AuthResponse googleAuth(GoogleAuthRequest request, HttpServletResponse response) {
+        validateGoogleConfig();
         try {
+            String redirectUri = request.getRedirectUri() != null && !request.getRedirectUri().isBlank()
+                    ? request.getRedirectUri()
+                    : frontendOrigin + "/auth/google/callback";
+
             MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
             params.add("code", request.getCode());
             params.add("client_id", googleClientId);
             params.add("client_secret", googleClientSecret);
-            params.add("redirect_uri", request.getRedirectUri() != null ? request.getRedirectUri() : frontendOrigin + "/signup");
+            params.add("redirect_uri", redirectUri);
             params.add("grant_type", "authorization_code");
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-            ResponseEntity<String> tokenResponse = restTemplate.postForEntity(
-                    "https://oauth2.googleapis.com/token",
-                    new HttpEntity<>(params, headers),
-                    String.class
-            );
+            ResponseEntity<String> tokenResponse;
+            try {
+                tokenResponse = restTemplate.postForEntity(
+                        "https://oauth2.googleapis.com/token",
+                        new HttpEntity<>(params, headers),
+                        String.class
+                );
+            } catch (HttpStatusCodeException e) {
+                String body = e.getResponseBodyAsString();
+                if (body != null && !body.isBlank()) {
+                    try {
+                        JsonNode errorJson = objectMapper.readTree(body);
+                        if (errorJson.has("error_description")) {
+                            throw new BadRequestException("Google token exchange failed: " + errorJson.get("error_description").asText());
+                        }
+                        if (errorJson.has("error")) {
+                            throw new BadRequestException("Google token exchange failed: " + errorJson.get("error").asText());
+                        }
+                    } catch (BadRequestException bre) {
+                        throw bre;
+                    } catch (Exception ignored) {
+                        throw new BadRequestException("Google token exchange failed: " + body);
+                    }
+                }
+                throw new BadRequestException("Google token exchange failed (HTTP " + e.getStatusCode().value() + "). Check GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and redirect URI.");
+            }
 
             JsonNode tokenJson = objectMapper.readTree(tokenResponse.getBody());
+            if (tokenJson.has("error")) {
+                String description = tokenJson.has("error_description")
+                        ? tokenJson.get("error_description").asText()
+                        : tokenJson.get("error").asText();
+                throw new BadRequestException("Google token exchange failed: " + description);
+            }
+            if (!tokenJson.has("access_token")) {
+                throw new BadRequestException("Google token exchange failed: no access token returned");
+            }
             String accessToken = tokenJson.get("access_token").asText();
 
             HttpHeaders userHeaders = new HttpHeaders();
@@ -176,9 +214,7 @@ public class AuthService {
 
             User user = userRepository.findByGoogleSub(googleSub)
                     .or(() -> userRepository.findByEmail(email))
-                    .orElseThrow(() -> new BadRequestException(
-                            "No account found. Please complete registration with your National ID first."
-                    ));
+                    .orElseGet(() -> registerGoogleUser(googleSub, email, name, picture));
 
             if (user.getGoogleSub() == null) {
                 user.setGoogleSub(googleSub);
@@ -195,8 +231,51 @@ public class AuthService {
         } catch (BadRequestException | UnauthorizedException e) {
             throw e;
         } catch (Exception e) {
-            throw new BadRequestException("Google authentication failed");
+            throw new BadRequestException("Google authentication failed: " + e.getMessage());
         }
+    }
+
+    private void validateGoogleConfig() {
+        if (googleClientId == null || googleClientId.isBlank() || "your_google_client_id".equals(googleClientId)) {
+            throw new BadRequestException("Google OAuth is not configured on the server. Set GOOGLE_CLIENT_ID in .env");
+        }
+        if (googleClientSecret == null || googleClientSecret.isBlank() || "your_google_client_secret".equals(googleClientSecret)) {
+            throw new BadRequestException("Google OAuth is not configured on the server. Set GOOGLE_CLIENT_SECRET in .env");
+        }
+    }
+
+    private User registerGoogleUser(String googleSub, String email, String name, String picture) {
+        LocalDate defaultBirthDate = LocalDate.of(2000, 1, 1);
+        String country = "LK";
+        String placeholderNationalId = "GOOGLE-" + googleSub;
+
+        String healthId = healthIdGenerator.generate(country, defaultBirthDate, placeholderNationalId);
+        while (userRepository.existsByHealthId(healthId)) {
+            healthId = healthIdGenerator.generate(country, defaultBirthDate, placeholderNationalId);
+        }
+
+        User user = User.builder()
+                .name(name)
+                .email(email)
+                .country(country)
+                .nationalId(encryptionService.encryptNationalId(placeholderNationalId))
+                .healthId(healthId)
+                .googleSub(googleSub)
+                .profileImageUrl(picture)
+                .role(Role.CITIZEN)
+                .verified(false)
+                .build();
+        userRepository.save(user);
+
+        HealthProfile profile = HealthProfile.builder()
+                .userId(user.getId())
+                .gender(Gender.MALE)
+                .birthDate(defaultBirthDate)
+                .build();
+        healthProfileRepository.save(profile);
+
+        auditLogService.log(user.getId(), "GOOGLE_REGISTER", "User", user.getId());
+        return user;
     }
 
     public AuthResponse refresh(String refreshToken, HttpServletResponse response) {
