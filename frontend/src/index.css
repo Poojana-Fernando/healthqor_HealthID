@@ -24,6 +24,17 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+.bg-performance-layer {
+  contain: strict;
+}
+
+.bg-video-layer {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform;
 }
 
 .glass {
@@ -114,15 +125,22 @@ body {
       radial-gradient(ellipse 55% 45% at 75% 65%, rgba(94, 234, 212, 0.08), transparent 55%),
       radial-gradient(ellipse 40% 30% at 50% 90%, rgba(20, 83, 45, 0.15), transparent 50%);
     animation: mesh-drift 20s ease-in-out infinite alternate;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    will-change: transform, opacity;
   }
 
   .medical-logo-pulse {
     animation: logo-pulse 2s ease-in-out infinite;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    will-change: transform, opacity;
   }
 
   .medical-ecg {
     stroke-dasharray: 120;
     animation: ecg-draw 2.4s ease-in-out infinite;
+    will-change: stroke-dashoffset;
   }
 
   .medical-shield {
@@ -142,6 +160,9 @@ body {
 
   .allergy-alert {
     animation: allergy-pulse 2.2s ease-in-out infinite;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    will-change: box-shadow, background-color;
   }
 
   .neural-mesh {
@@ -151,6 +172,10 @@ body {
       radial-gradient(circle at 50% 50%, rgba(14, 116, 144, 0.05) 0%, transparent 50%);
     background-size: 200% 200%;
     animation: neural-drift 25s ease-in-out infinite alternate;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    will-change: transform, opacity, background-position;
+    contain: paint;
   }
 
   .neural-mesh::before {
@@ -163,6 +188,9 @@ body {
     background-size: 48px 48px;
     mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black 20%, transparent 75%);
     animation: grid-shift 30s linear infinite;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    will-change: transform;
   }
 
   .fluid-orb {
@@ -171,6 +199,10 @@ body {
     filter: blur(80px);
     opacity: 0.35;
     animation: orb-float 18s ease-in-out infinite;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    will-change: transform, opacity;
+    contain: paint;
   }
 
   .fluid-orb-1 {
@@ -261,6 +293,9 @@ body {
 
 .animate-fade-in {
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform, opacity;
 }
 
 .hud-panel {
@@ -282,6 +317,9 @@ body {
   pointer-events: none;
   z-index: 5;
   filter: drop-shadow(0 0 4px rgba(94, 234, 212, 0.3));
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform, opacity;
 }
 
 @keyframes scan-sweep {

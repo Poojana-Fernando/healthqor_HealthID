@@ -203,6 +203,60 @@ Repository interfaces require no code changes.
 | Redis connection errors | Set `CACHE_TYPE=simple` and `SPRING_PROFILES_ACTIVE=dev` |
 | AI returns fallback data | Check `OPENAI_API_KEY` is set and backend was restarted |
 | Frontend can't reach API | Ensure backend is on port 8080; leave `VITE_API_URL` empty for dev proxy |
+| Maven `PKIX path building failed` / `certificate_unknown` | Java cannot trust Maven Central HTTPS (common on corporate networks, VPN, or antivirus SSL inspection). See [Maven SSL fix](#maven-ssl--dependency-download-errors) below |
+| `npm` errors in wrong folder | Run `npm install` only inside `frontend/` (not repo root or `backend/`) |
+
+### Maven SSL / dependency download errors
+
+If Maven fails with errors like:
+
+```
+PKIX path building failed: unable to find valid certification path to requested target
+Plugin ... or one of its dependencies could not be resolved
+```
+
+the project `pom.xml` is fine — your **Java/Maven environment cannot verify HTTPS** to `repo.maven.apache.org`.
+
+**Try these fixes (in order):**
+
+1. **Use the project Maven wrapper from `backend/`:**
+   ```powershell
+   cd backend
+   .\mvnw.cmd clean compile
+   ```
+
+2. **Bypass corporate proxy for Maven** (if you use a proxy):
+   ```powershell
+   set MAVEN_OPTS=-Djava.net.useSystemProxies=true
+   .\mvn.cmd clean compile
+   ```
+
+3. **Antivirus / SSL inspection:** Temporarily disable HTTPS scanning (Kaspersky, Avast, corporate endpoint tools) or add an exception for `java.exe` and `repo.maven.apache.org`.
+
+4. **Import your network's root certificate into Java** (corporate VPN/firewall):
+   ```powershell
+   # Find your Java home
+   java -XshowSettings:properties -version 2>&1 | findstr "java.home"
+
+   # Import cert (replace paths; run as Administrator)
+   keytool -importcert -alias corporate-proxy -file C:\path\to\corp-root-ca.cer -keystore "%JAVA_HOME%\lib\security\cacerts" -storepass changeit
+   ```
+   Then restart the IDE and run `.\mvn.cmd clean compile` again.
+
+5. **Use Java 21 LTS** (project target). Java 25 may work for compile but some tools/plugins can behave differently:
+   ```powershell
+   java -version   # should show 21.x for best compatibility
+   ```
+
+6. **Frontend dependencies** (separate from Maven):
+   ```powershell
+   cd frontend
+   Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
+   npm install
+   npm run dev
+   ```
+
+`mvn compile` may succeed if dependencies are already cached in `~/.m2`, while `mvn test` or IDE "Resolve dependencies" fails when new artifacts must be downloaded.
 
 ---
 

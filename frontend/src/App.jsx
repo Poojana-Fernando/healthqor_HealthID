@@ -8,6 +8,7 @@ import SignupPage from './pages/SignupPage'
 import LoginPage from './pages/LoginPage'
 import EChannelingPage from './pages/EChannelingPage'
 import AdminPage from './pages/AdminPage'
+import SupportPage from './pages/SupportPage'
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/echanneling" element={<EChannelingPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/support" element={<SupportPage />} />
       </Routes>
       <ChatbotFab />
     </div>

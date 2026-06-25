@@ -28,7 +28,7 @@ export default function Navbar() {
           <a href="/echanneling" className="hover:text-accent2 transition">
             e-Channeling
           </a>
-          <a href="#support" className="hover:text-accent2 transition">Support</a>
+          <Link to="/support" className="hover:text-accent2 transition">Support</Link>
         </div>
 
         <div className="flex items-center gap-3">

@@ -3,7 +3,6 @@ import * as THREE from 'three'
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js'
 import {
   buildPlexusLines,
-  classifyParticles,
   createHexGeometry,
   extractVertices,
   normalizeMeshVertices,
@@ -101,9 +100,9 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
     camera.lookAt(0, 0.1, 0)
 
     /* ── Renderer ──────────────────────────────────────── */
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' })
     renderer.setSize(width, height)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
     renderer.toneMapping = THREE.ACESFilmicToneMapping
     renderer.toneMappingExposure = 1.25
     container.appendChild(renderer.domElement)
@@ -177,22 +176,35 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
 
     /* ── Raycaster & interaction state ─────────────────── */
     const raycaster = new THREE.Raycaster()
+    raycaster.params.Points.threshold = 0.15
     const mouse = new THREE.Vector2(-10, -10)
     const clock = new THREE.Clock()
+    const hoverRaycastInterval = 1000 / 30
 
     let originals = []
     let particleGeo = null
+    let particlePoints = null
     let hexMeshes = []
     let organLights = []
     let cachedBox = null
+    let lastHoverRaycastAt = 0
+    let mouseMovedSinceLastRaycast = false
+    let cursorState = 'default'
+    let isPageVisible = document.visibilityState === 'visible'
     const disposables = []
 
     const onMouseMove = (e) => {
       const rect = renderer.domElement.getBoundingClientRect()
       mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
       mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
+      mouseMovedSinceLastRaycast = true
     }
     container.addEventListener('mousemove', onMouseMove)
+
+    const onVisibilityChange = () => {
+      isPageVisible = document.visibilityState === 'visible'
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
 
     /* ── Organ spatial classifier (unchanged) ──────────── */
     const getOrganFromPoint = (point, box) => {
@@ -237,13 +249,14 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
 
     /* ── Click handler (unchanged) ─────────────────────── */
     const onCanvasClick = (e) => {
-      if (!particleGeo || !originals.length) return
-      
+      if (!particlePoints || !originals.length) return
+
+      const rect = renderer.domElement.getBoundingClientRect()
+      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
+      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
       raycaster.setFromCamera(mouse, camera)
-      raycaster.params.Points.threshold = 0.15
-      const hits = raycaster.intersectObjects(humanoid.children, true)
-      const pointsHit = hits.find(h => h.object.isPoints)
-      
+      const pointsHit = raycaster.intersectObject(particlePoints, false)[0]
+
       if (pointsHit) {
         const pointIndex = pointsHit.index
         const point = originals[pointIndex]
@@ -260,34 +273,45 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
     /* ── Animation loop ────────────────────────────────── */
     const animate = () => {
       frame = requestAnimationFrame(animate)
+      if (!isPageVisible) return
       const t = clock.getElapsedTime()
+      const now = performance.now()
 
       // Continuous rotation
       humanoid.rotation.y = t * 0.22
 
-      if (particleGeo && originals.length) {
-        raycaster.setFromCamera(mouse, camera)
+      if (particlePoints && originals.length) {
+        const shouldRaycast =
+          mouseMovedSinceLastRaycast || now - lastHoverRaycastAt >= hoverRaycastInterval
 
-        // Hover detection
-        raycaster.params.Points.threshold = 0.15
-        const hits = raycaster.intersectObjects(humanoid.children, true)
-        const pointsHit = hits.find(h => h.object.isPoints)
-        
-        if (pointsHit) {
-          renderer.domElement.style.cursor = 'pointer'
-          const point = originals[pointsHit.index]
-          if (point) {
-            const organ = getOrganFromPoint(point, cachedBox)
-            if (hoveredRegionRef.current !== organ) {
-              hoveredRegionRef.current = organ
-              setHoveredRegion(organ)
+        if (shouldRaycast) {
+          lastHoverRaycastAt = now
+          mouseMovedSinceLastRaycast = false
+          raycaster.setFromCamera(mouse, camera)
+          const pointsHit = raycaster.intersectObject(particlePoints, false)[0]
+
+          if (pointsHit) {
+            if (cursorState !== 'pointer') {
+              renderer.domElement.style.cursor = 'pointer'
+              cursorState = 'pointer'
             }
-          }
-        } else {
-          renderer.domElement.style.cursor = 'default'
-          if (hoveredRegionRef.current !== null) {
-            hoveredRegionRef.current = null
-            setHoveredRegion(null)
+            const point = originals[pointsHit.index]
+            if (point) {
+              const organ = getOrganFromPoint(point, cachedBox)
+              if (hoveredRegionRef.current !== organ) {
+                hoveredRegionRef.current = organ
+                setHoveredRegion(organ)
+              }
+            }
+          } else {
+            if (cursorState !== 'default') {
+              renderer.domElement.style.cursor = 'default'
+              cursorState = 'default'
+            }
+            if (hoveredRegionRef.current !== null) {
+              hoveredRegionRef.current = null
+              setHoveredRegion(null)
+            }
           }
         }
 
@@ -322,7 +346,6 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
 
         const normalized = normalizeMeshVertices(rawVerts, 3.6)
         const points = sampleVertices(normalized, 3800)
-        const types = classifyParticles(points)
 
         originals = points.map((p) => p.clone())
 
@@ -330,6 +353,7 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
         const colors = new Float32Array(points.length * 3)
         const c = new THREE.Color()
         const box = new THREE.Box3().setFromPoints(points)
+        const organs = points.map((p) => getOrganFromPoint(p, box))
         cachedBox = box
 
         /* Colour assignment: dim body, vivid organs */
@@ -338,7 +362,7 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
           positions[i * 3 + 1] = p.y
           positions[i * 3 + 2] = p.z
           
-          const organ = getOrganFromPoint(p, box)
+          const organ = organs[i]
           switch (organ) {
             case 'BRAIN':
               c.setRGB(0.7, 0.3, 0.9)
@@ -376,7 +400,7 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
         particleGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
         disposables.push(particleGeo)
 
-        humanoid.add(new THREE.Points(particleGeo, new THREE.PointsMaterial({
+        const pointsMat = new THREE.PointsMaterial({
           size: 0.026,
           vertexColors: true,
           transparent: true,
@@ -384,23 +408,25 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
           blending: THREE.AdditiveBlending,
           depthWrite: false,
           sizeAttenuation: true,
-        })))
+        })
+        particlePoints = new THREE.Points(particleGeo, pointsMat)
+        disposables.push(pointsMat)
+        humanoid.add(particlePoints)
 
         /* Plexus network lines */
         const plexusGeo = new THREE.BufferGeometry()
         plexusGeo.setAttribute('position', new THREE.Float32BufferAttribute(buildPlexusLines(points), 3))
         disposables.push(plexusGeo)
-        humanoid.add(new THREE.LineSegments(
-          plexusGeo,
-          new THREE.LineBasicMaterial({ color: 0x34d399, transparent: true, opacity: 0.08 })
-        ))
+        const plexusMat = new THREE.LineBasicMaterial({ color: 0x34d399, transparent: true, opacity: 0.08 })
+        disposables.push(plexusMat)
+        humanoid.add(new THREE.LineSegments(plexusGeo, plexusMat))
 
         /* Hex overlays */
         const hexGeo = createHexGeometry(0.016)
         disposables.push(hexGeo)
         const hexStep = Math.max(1, Math.floor(points.length / 600))
         for (let i = 0; i < points.length; i += hexStep) {
-          const organ = getOrganFromPoint(points[i], box)
+          const organ = organs[i]
           let hexColor = 0x5eead4
           if (organ === 'BRAIN') hexColor = 0xb280ff
           else if (organ === 'HEART') hexColor = 0xff3355
@@ -426,8 +452,8 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
 
         /* Per-organ glow PointLights */
         const organGroups = {}
-        points.forEach((p) => {
-          const organ = getOrganFromPoint(p, box)
+        points.forEach((p, i) => {
+          const organ = organs[i]
           if (organ !== 'SKIN_LIMBS') {
             if (!organGroups[organ]) organGroups[organ] = []
             organGroups[organ].push(p)
@@ -470,6 +496,7 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
       camera.aspect = w / h
       camera.updateProjectionMatrix()
       renderer.setSize(w, h)
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
     }
     window.addEventListener('resize', onResize)
 
@@ -478,6 +505,7 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
       disposed = true
       cancelAnimationFrame(frame)
       window.removeEventListener('resize', onResize)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
       container.removeEventListener('mousemove', onMouseMove)
       container.removeEventListener('click', onCanvasClick)
       hexMeshes.forEach(({ mesh }) => mesh.material?.dispose())

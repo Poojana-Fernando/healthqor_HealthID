@@ -1,14 +1,15 @@
-import bgVideo from '../bgVideo/snowfall-in-forest.3840x2160.mp4'
+import bgVideo from '../bgVideo/bg.mp4'
 
 export default function LiveBackground() {
   return (
-    <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none" aria-hidden="true">
+    <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-performance-layer" aria-hidden="true">
       <video
         autoPlay
         muted
         loop
         playsInline
-        className="absolute inset-0 w-full h-full object-cover brightness-110 contrast-105"
+        preload="metadata"
+        className="absolute inset-0 w-full h-full object-cover brightness-110 contrast-105 bg-video-layer"
         src={bgVideo}
       />
       {/* Light edge vignettes only — keeps video highly visible */}
