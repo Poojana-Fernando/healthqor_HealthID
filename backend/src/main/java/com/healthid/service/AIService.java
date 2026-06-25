@@ -74,6 +74,26 @@ public class AIService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         String symptoms = String.join(", ", request.getSymptoms());
+
+        // Build patient health context for personalised triage
+        StringBuilder patientContext = new StringBuilder();
+        healthProfileRepository.findByUserId(user.getId()).ifPresent(hp -> {
+            patientContext.append("\nPatient context:");
+            if (hp.getGender() != null) patientContext.append(" Gender: ").append(hp.getGender()).append(".");
+            if (hp.getBirthDate() != null) {
+                long age = java.time.Period.between(hp.getBirthDate(), java.time.LocalDate.now()).getYears();
+                patientContext.append(" Age: ").append(age).append(" years.");
+            }
+            if (hp.getBmi() != null) patientContext.append(" BMI: ").append(hp.getBmi()).append(".");
+            if (hp.getBloodType() != null) patientContext.append(" Blood type: ").append(hp.getBloodType()).append(".");
+            if (hp.getAllergies() != null && !hp.getAllergies().isBlank()) patientContext.append(" Allergies: ").append(hp.getAllergies()).append(".");
+        });
+        List<MedicalHistory> conditions = medicalHistoryRepository.findByUserIdOrderByDiagnosedDateDesc(user.getId());
+        if (!conditions.isEmpty()) {
+            patientContext.append(" Active/past conditions: ");
+            conditions.stream().limit(5).forEach(c -> patientContext.append(c.getConditionName()).append(", "));
+        }
+
         String systemPrompt = """
                 You are a triage assistant for Health ID Sri Lanka.
                 Given symptoms, return JSON only:
@@ -87,11 +107,12 @@ public class AIService {
                   ]
                 }
                 Provide 3 recommended_articles relevant to the symptoms (general health education, not diagnosis).
+                If patient context is provided, factor in their age, BMI, allergies, and medical history for more relevant triage.
                 Never diagnose. Always recommend seeing a licensed doctor.
                 Return only valid JSON, no prose.
                 """;
 
-        String userPrompt = "Symptoms: " + symptoms;
+        String userPrompt = "Symptoms: " + symptoms + patientContext;
         String aiResponse = callOpenAI(systemPrompt, userPrompt);
 
         String specialty = "General Practice";

@@ -123,18 +123,8 @@ function generateMockTrend(currentValue, seed = 1) {
 }
 
 export default function OrganDetailsCard({ activeRegion = null, onClear, profile = null }) {
-  const [pulseBpm, setPulseBpm] = useState(72)
   const isOrganSelected = activeRegion !== null && ORGAN_PROFILES[activeRegion] !== undefined
   const organProfile = isOrganSelected ? ORGAN_PROFILES[activeRegion] : null
-
-  useEffect(() => {
-    if (!isOrganSelected) {
-      const interval = setInterval(() => {
-        setPulseBpm((prev) => prev + Math.floor(Math.random() * 5) - 2)
-      }, 3000)
-      return () => clearInterval(interval)
-    }
-  }, [isOrganSelected])
 
   if (!isOrganSelected) {
     return (
@@ -154,25 +144,6 @@ export default function OrganDetailsCard({ activeRegion = null, onClear, profile
               Holographic particle scanning module loaded. Hover or click on the 3D model regions to retrieve real-time anatomical classifications, descriptions, and common clinical pathologies.
             </p>
 
-            <div className="border border-white/10 rounded-2xl p-5 bg-[#0c1a14]/60 relative overflow-hidden">
-              <div className="absolute top-2 right-4 text-[9px] font-mono text-accent2/50">ECG TELEMETRY</div>
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-mono text-white/50">HEART RATE</span>
-                <span className="text-2xl font-mono text-emerald-400 font-bold animate-pulse">
-                  {pulseBpm} <span className="text-xs text-white/40">BPM</span>
-                </span>
-              </div>
-              
-              {/* Pulsating ECG Line Graph */}
-              <div className="h-16 w-full flex items-center relative overflow-hidden">
-                <svg className="w-full h-full stroke-emerald-400" fill="none" viewBox="0 0 300 60">
-                  <path 
-                    className="medical-ecg stroke-[2]"
-                    d="M0 30 L50 30 L60 20 L70 40 L80 30 L100 30 L110 5 L120 55 L130 30 L150 30 L200 30 L210 20 L220 40 L230 30 L250 30 L260 5 L270 55 L280 30 L300 30" 
-                  />
-                </svg>
-              </div>
-            </div>
 
             {profile ? (
               <div className="space-y-4">

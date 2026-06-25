@@ -70,6 +70,8 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
   const hoveredRegionRef = useRef(null)
   const modelKey = resolveModelKey(gender)
   const modelMeta = MODELS[modelKey]
+  const isHomepage = window.location.pathname === '/'
+  const modelUrl = isHomepage ? '/models/EmptyMesh.obj' : modelMeta.url
 
   useEffect(() => {
     if (onRegionHover) {
@@ -79,7 +81,7 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
 
   useEffect(() => {
     const container = mountRef.current
-    if (!container) return
+    if (!container || isHomepage) return
 
     let disposed = false
     let frame
@@ -329,7 +331,7 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
     /* ── OBJ model loading ─────────────────────────────── */
     const loader = new OBJLoader()
     loader.load(
-      modelMeta.url,
+      modelUrl,
       (object) => {
         if (disposed) return
 
@@ -513,7 +515,9 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
       renderer.dispose()
       container.removeChild(renderer.domElement)
     }
-  }, [modelKey, modelMeta.url])
+  }, [modelKey, modelUrl])
+
+  if (isHomepage) return null
 
   /* ── Callout state ───────────────────────────────────── */
   const displayRegion = hoveredRegion || activeRegion
