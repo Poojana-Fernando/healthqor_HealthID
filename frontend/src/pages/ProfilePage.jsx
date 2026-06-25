@@ -452,47 +452,13 @@ export default function ProfilePage() {
 
         <section className="profile-enterprise__center">
           <div className="pe-scan-viewport">
-            <svg className="pe-scan-grid" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <defs>
-                <pattern id="pe-grid" width="28" height="28" patternUnits="userSpaceOnUse">
-                  <path
-                    d="M 28 0 L 0 0 0 28"
-                    fill="none"
-                    stroke="rgba(29,201,127,0.5)"
-                    strokeWidth="0.5"
-                  />
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#pe-grid)" />
-            </svg>
 
             <div className="pe-crosshair">
-              <div className="pe-crosshair-bracket pe-crosshair-bracket--tl" />
-              <div className="pe-crosshair-bracket pe-crosshair-bracket--tr" />
-              <div className="pe-crosshair-bracket pe-crosshair-bracket--bl" />
-              <div className="pe-crosshair-bracket pe-crosshair-bracket--br" />
               <span className="pe-crosshair-label pe-crosshair-label--tl">X: 0.00</span>
               <span className="pe-crosshair-label pe-crosshair-label--tr">Y: 0.00</span>
               <span className="pe-crosshair-label pe-crosshair-label--bl">Z: 1.84m</span>
               <span className="pe-crosshair-label pe-crosshair-label--br">WT: {weightDisplay}kg</span>
             </div>
-
-            <svg className="pe-body-svg" width="120" height="280" viewBox="0 0 120 280" aria-hidden="true">
-              <ellipse cx="60" cy="30" rx="22" ry="25" fill="none" stroke="#1dc97f" strokeWidth="0.8" />
-              <rect x="35" y="58" width="50" height="100" rx="12" fill="none" stroke="#1dc97f" strokeWidth="0.8" />
-              <line x1="35" y1="70" x2="8" y2="130" stroke="#1dc97f" strokeWidth="0.8" />
-              <line x1="85" y1="70" x2="112" y2="130" stroke="#1dc97f" strokeWidth="0.8" />
-              <line x1="47" y1="158" x2="38" y2="250" stroke="#1dc97f" strokeWidth="0.8" />
-              <line x1="73" y1="158" x2="82" y2="250" stroke="#1dc97f" strokeWidth="0.8" />
-              <circle cx="60" cy="30" r="3" fill="#1dc97f" opacity="0.8" />
-              <circle cx="35" cy="70" r="2" fill="#1dc97f" opacity="0.5" />
-              <circle cx="85" cy="70" r="2" fill="#1dc97f" opacity="0.5" />
-              <circle cx="60" cy="95" r="2.5" fill="#1dc97f" opacity="0.6" />
-              <circle cx="60" cy="130" r="2" fill="#1dc97f" opacity="0.4" />
-              <circle cx="47" cy="200" r="1.5" fill="#1dc97f" opacity="0.3" />
-              <circle cx="73" cy="200" r="1.5" fill="#1dc97f" opacity="0.3" />
-            </svg>
-
             <div className="pe-humanoid-wrap">
               <HumanoidFigure
                 key={profile.gender || 'MALE'}
@@ -525,105 +491,14 @@ export default function ProfilePage() {
         </section>
 
         <aside className="profile-enterprise__right">
-          {displayRegion ? (
-            <div className="pe-inspector-organ">
-              <OrganDetailsCard
-                activeRegion={displayRegion}
-                onClear={() => {
-                  setActiveRegion(null)
-                  setHoveredRegion(null)
-                }}
-                profile={profile}
-              />
-            </div>
-          ) : (
-            <>
-              <div className="pe-inspector-header">
-                <span className="pe-inspector-title">System Inspector</span>
-                <span className="pe-online">
-                  <span className="pe-online-pip" />
-                  Online
-                </span>
-              </div>
-
-              <div className="pe-metric-grid">
-                <div className="pe-metric-card">
-                  <div className="pe-metric-label">Height</div>
-                  <div className="pe-metric-value-row">
-                    <span className="pe-metric-value">{heightDisplay}</span>
-                    <span className="pe-metric-unit">cm</span>
-                  </div>
-                  {heightSparkline && (
-                    <Sparkline data={heightSparkline} color="#1dc97f" height={20} width={60} className="!mx-0 !mt-1 !opacity-100" />
-                  )}
-                </div>
-                <div className="pe-metric-card">
-                  <div className="pe-metric-label">Weight</div>
-                  <div className="pe-metric-value-row">
-                    <span className="pe-metric-value">{weightDisplay}</span>
-                    <span className="pe-metric-unit">kg</span>
-                  </div>
-                  {weightSparkline && (
-                    <Sparkline data={weightSparkline} color="#1dc97f" height={20} width={60} className="!mx-0 !mt-1 !opacity-100" />
-                  )}
-                </div>
-              </div>
-
-              <div className="pe-metric-card pe-metric-card--full">
-                <div className="pe-metric-label">BMI</div>
-                <div className="pe-metric-value-row">
-                  <span className="pe-metric-value" style={{ color: '#ef9f27', fontSize: '18px' }}>
-                    {bmiDisplay}
-                  </span>
-                  {getBmiLabel(profile.bmi) && (
-                    <span className="pe-bmi-status">{getBmiLabel(profile.bmi)}</span>
-                  )}
-                </div>
-                <div className="pe-bmi-bar">
-                  <div
-                    className="pe-bmi-bar-fill"
-                    style={{ width: `${getBmiBarPercent(profile.bmi)}%` }}
-                  />
-                </div>
-                <div className="pe-bmi-range">
-                  <span>16</span>
-                  <span>18.5</span>
-                  <span>25</span>
-                  <span>30</span>
-                  <span>40</span>
-                </div>
-              </div>
-
-              <div className="pe-metric-card pe-metric-card--full">
-                <div className="pe-metric-label">Eyesight</div>
-                <div className="pe-eyesight-chips">
-                  <div className="pe-eyesight-chip">
-                    <div className="pe-eyesight-chip-label">Left</div>
-                    <div className="pe-eyesight-chip-value">{profile.eyesightLeft || '—'}</div>
-                  </div>
-                  <div className="pe-eyesight-chip">
-                    <div className="pe-eyesight-chip-label">Right</div>
-                    <div className="pe-eyesight-chip-value">{profile.eyesightRight || '—'}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pe-metric-card pe-metric-card--full">
-                <div className="pe-metric-label">Allergies</div>
-                {profile.allergies?.length > 0 ? (
-                  <div className="pe-allergy-tags">
-                    {profile.allergies.map((allergy) => (
-                      <span key={allergy} className={`pe-allergy-tag ${getAllergyTagClass(allergy)}`}>
-                        {allergy}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="pe-eyesight-chip-value" style={{ marginTop: 4 }}>—</div>
-                )}
-              </div>
-            </>
-          )}
+          <OrganDetailsCard
+            activeRegion={displayRegion}
+            onClear={() => {
+              setActiveRegion(null)
+              setHoveredRegion(null)
+            }}
+            profile={profile}
+          />
         </aside>
       </div>
 
@@ -751,54 +626,56 @@ export default function ProfilePage() {
           <div className="pe-edit-drawer">
             <h2>Edit Profile</h2>
 
-            <div>
-              <label>Name</label>
-              <input
-                value={editForm.name || ''}
-                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                className="pe-edit-input"
-              />
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2">
+                <label>Name</label>
+                <input
+                  value={editForm.name || ''}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className="pe-edit-input"
+                />
+              </div>
+              <div>
+                <label>Gender</label>
+                <select
+                  value={editForm.gender || 'MALE'}
+                  onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
+                  className="pe-edit-input"
+                >
+                  <option value="MALE">Male</option>
+                  <option value="FEMALE">Female</option>
+                </select>
+              </div>
             </div>
 
-            <div>
-              <label>Mobile</label>
-              <input
-                value={editForm.mobile || ''}
-                onChange={(e) => setEditForm({ ...editForm, mobile: e.target.value })}
-                className="pe-edit-input"
-              />
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2">
+                <label>Mobile</label>
+                <input
+                  value={editForm.mobile || ''}
+                  onChange={(e) => setEditForm({ ...editForm, mobile: e.target.value })}
+                  className="pe-edit-input"
+                />
+              </div>
+              <div>
+                <label>Blood Type</label>
+                <select
+                  value={editForm.bloodType || ''}
+                  onChange={(e) => setEditForm({ ...editForm, bloodType: e.target.value })}
+                  className="pe-edit-input"
+                >
+                  <option value="">Select</option>
+                  {BLOOD_TYPES.map((b) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div>
-              <label>Gender</label>
-              <select
-                value={editForm.gender || 'MALE'}
-                onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
-                className="pe-edit-input"
-              >
-                <option value="MALE">Male</option>
-                <option value="FEMALE">Female</option>
-              </select>
-            </div>
-
-            <div>
-              <label>Blood Type</label>
-              <select
-                value={editForm.bloodType || ''}
-                onChange={(e) => setEditForm({ ...editForm, bloodType: e.target.value })}
-                className="pe-edit-input"
-              >
-                <option value="">Select</option>
-                {BLOOD_TYPES.map((b) => (
-                  <option key={b} value={b}>{b}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <div className="flex justify-between mb-1">
-                  <label>Height</label>
+                  <label style={{ marginBottom: 0 }}>Height</label>
                   <button type="button" onClick={toggleHeightUnit} className="text-xs" style={{ color: '#1dc97f' }}>
                     {heightUnit}
                   </button>
@@ -808,12 +685,11 @@ export default function ProfilePage() {
                   value={editForm.height ?? ''}
                   onChange={(e) => setEditForm({ ...editForm, height: e.target.value })}
                   className="pe-edit-input"
-                  style={{ marginBottom: 0 }}
                 />
               </div>
               <div>
                 <div className="flex justify-between mb-1">
-                  <label>Weight</label>
+                  <label style={{ marginBottom: 0 }}>Weight</label>
                   <button type="button" onClick={toggleWeightUnit} className="text-xs" style={{ color: '#1dc97f' }}>
                     {weightUnit}
                   </button>
@@ -823,12 +699,11 @@ export default function ProfilePage() {
                   value={editForm.weight ?? ''}
                   onChange={(e) => setEditForm({ ...editForm, weight: e.target.value })}
                   className="pe-edit-input"
-                  style={{ marginBottom: 0 }}
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mt-4">
+            <div className="grid grid-cols-2 gap-3 mt-3">
               <div>
                 <label>Eyesight Left</label>
                 <input
@@ -847,7 +722,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div>
+            <div className="mt-1">
               <label>Allergies (optional)</label>
               <div className="flex gap-2">
                 <input
@@ -858,11 +733,11 @@ export default function ProfilePage() {
                   style={{ marginBottom: 0 }}
                   placeholder="Type and press Enter"
                 />
-                <button type="button" onClick={addAllergy} className="pe-edit-save" style={{ flex: '0 0 auto', padding: '8px 14px' }}>
+                <button type="button" onClick={addAllergy} className="pe-edit-save" style={{ flex: '0 0 auto', padding: '6px 12px' }}>
                   +
                 </button>
               </div>
-              <div className="flex flex-wrap gap-1 mt-2">
+              <div className="flex flex-wrap gap-1 mt-1.5 max-h-[60px] overflow-y-auto">
                 {editForm.allergies?.map((a) => (
                   <button
                     key={a}
@@ -877,9 +752,9 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {editError && <p style={{ color: '#f09595', fontSize: 13, marginBottom: 16 }}>{editError}</p>}
+            {editError && <p style={{ color: '#f09595', fontSize: 13, margin: '8px 0' }}>{editError}</p>}
 
-            <div className="pe-edit-actions">
+            <div className="pe-edit-actions mt-4">
               <button type="button" onClick={saveProfile} disabled={saving} className="pe-edit-save">
                 {saving ? 'Saving...' : 'Save'}
               </button>

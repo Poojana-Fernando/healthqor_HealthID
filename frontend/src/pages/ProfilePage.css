@@ -7,7 +7,7 @@
   --pe-border-soft: rgba(255, 255, 255, 0.07);
   --pe-text-muted: rgba(255, 255, 255, 0.4);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: var(--pe-bg);
+  background: transparent;
   color: #fff;
   position: relative;
   z-index: 1;
@@ -15,23 +15,22 @@
 }
 
 .profile-enterprise::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: var(--pe-bg);
-  z-index: -1;
-  pointer-events: none;
+  display: none;
 }
 
 .profile-enterprise__grid {
   display: grid;
-  grid-template-columns: 240px 1fr 220px;
-  min-height: calc(100vh - 72px);
+  grid-template-columns: 340px 1fr 340px;
+  height: 600px;
+  max-width: 1280px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .profile-enterprise__left,
 .profile-enterprise__center,
 .profile-enterprise__right {
+  height: 100%;
   min-height: 0;
 }
 
@@ -48,6 +47,7 @@
   display: flex;
   flex-direction: column;
   border-right: 0.5px solid var(--pe-border-soft);
+  padding: 16px;
 }
 
 .profile-enterprise__right {
@@ -55,7 +55,9 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  overflow-y: auto;
+  overflow: hidden;
+  height: 100%;
+  min-height: 0;
 }
 
 /* Left — Profile ID card */
@@ -242,17 +244,15 @@
 .pe-scan-viewport {
   flex: 1;
   position: relative;
-  background: #060a0e;
+  background: rgba(255, 255, 255, 0.04);
+  border: 0.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
   overflow: hidden;
   min-height: 420px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
-.pe-scan-grid {
-  position: absolute;
-  inset: 0;
-  opacity: 0.06;
-  pointer-events: none;
-}
 
 .pe-crosshair {
   position: absolute;
@@ -262,42 +262,6 @@
   height: 320px;
   transform: translate(-50%, -50%);
   pointer-events: none;
-}
-
-.pe-crosshair-bracket {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  border: 1.5px solid var(--pe-accent);
-  opacity: 0.5;
-}
-
-.pe-crosshair-bracket--tl {
-  top: 0;
-  left: 0;
-  border-right: none;
-  border-bottom: none;
-}
-
-.pe-crosshair-bracket--tr {
-  top: 0;
-  right: 0;
-  border-left: none;
-  border-bottom: none;
-}
-
-.pe-crosshair-bracket--bl {
-  bottom: 0;
-  left: 0;
-  border-right: none;
-  border-top: none;
-}
-
-.pe-crosshair-bracket--br {
-  bottom: 0;
-  right: 0;
-  border-left: none;
-  border-top: none;
 }
 
 .pe-crosshair-label {
@@ -311,17 +275,6 @@
 .pe-crosshair-label--tr { top: 2px; right: 18px; }
 .pe-crosshair-label--bl { bottom: 2px; left: 18px; }
 .pe-crosshair-label--br { bottom: 2px; right: 18px; }
-
-.pe-body-svg {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  opacity: 0.55;
-  pointer-events: none;
-  z-index: 1;
-}
-
 .pe-humanoid-wrap {
   position: absolute;
   inset: 0;
@@ -331,6 +284,10 @@
 .pe-humanoid-wrap > div {
   border-radius: 0 !important;
   background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 /* Hide HumanoidFigure built-in chrome on profile page */
@@ -536,29 +493,24 @@
   border-color: var(--pe-border-soft);
 }
 
-.pe-inspector-organ {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.pe-inspector-organ > div {
+.profile-enterprise__right > div {
   height: 100% !important;
   max-height: none !important;
   border-radius: 10px !important;
   background: rgba(255, 255, 255, 0.03) !important;
-  border: 0.5px solid var(--pe-border) !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  transition: border-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Tabs section below grid */
 .pe-tabs-section {
   border-top: 0.5px solid var(--pe-border-soft);
   padding: 24px 20px 32px;
-  background: var(--pe-bg);
+  background: transparent;
+  max-width: 1280px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .pe-tabs-nav {
@@ -600,8 +552,11 @@
 /* Edit drawer */
 .pe-edit-overlay {
   position: fixed;
-  inset: 0;
-  z-index: 50;
+  top: 72px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 45;
   display: flex;
   justify-content: flex-end;
 }
@@ -618,22 +573,22 @@
   max-width: 28rem;
   height: 100%;
   overflow-y: auto;
-  padding: 24px;
+  padding: 16px;
   background: #0d1117;
   border-left: 0.5px solid var(--pe-border);
 }
 
 .pe-edit-drawer h2 {
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 700;
-  margin-bottom: 24px;
+  margin-bottom: 12px;
 }
 
 .pe-edit-drawer label {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--pe-accent);
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .pe-edit-input {
@@ -641,10 +596,10 @@
   background: rgba(0, 0, 0, 0.25);
   border: 0.5px solid var(--pe-border);
   border-radius: 7px;
-  padding: 8px 12px;
+  padding: 6px 10px;
   font-size: 13px;
   color: #fff;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .pe-edit-input:focus {
@@ -694,19 +649,35 @@
   font-size: 14px;
 }
 
+/* Explicit style for Three.js canvas */
+.pe-humanoid-wrap canvas {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
 @media (max-width: 1024px) {
   .profile-enterprise__grid {
     grid-template-columns: 1fr;
     min-height: auto;
+    height: auto !important;
   }
 
   .profile-enterprise__left,
-  .profile-enterprise__center {
+  .profile-enterprise__center,
+  .profile-enterprise__right {
+    height: auto !important;
     border-right: none;
     border-bottom: 0.5px solid var(--pe-border-soft);
   }
 
   .pe-scan-viewport {
     min-height: 360px;
+    height: auto !important;
+  }
+
+  .profile-enterprise__right > div {
+    height: auto !important;
+    max-height: none !important;
   }
 }
