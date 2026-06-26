@@ -123,18 +123,39 @@ function generateMockTrend(currentValue, seed = 1) {
 }
 
 export default function OrganDetailsCard({ activeRegion = null, onClear, profile = null }) {
+  const [lastRegion, setLastRegion] = useState(null)
+
+  useEffect(() => {
+    if (activeRegion && ORGAN_PROFILES[activeRegion]) {
+      setLastRegion(activeRegion)
+    }
+  }, [activeRegion])
+
   const isOrganSelected = activeRegion !== null && ORGAN_PROFILES[activeRegion] !== undefined
-  const organProfile = isOrganSelected ? ORGAN_PROFILES[activeRegion] : null
+  const currentRegion = isOrganSelected ? activeRegion : lastRegion
+  const organProfile = currentRegion ? ORGAN_PROFILES[currentRegion] : null
 
   // Dynamic styling to transition between states
-  const borderStyle = organProfile ? `${organProfile.color}40` : 'rgba(255, 255, 255, 0.18)'
+  const borderStyle = 'transparent'
   const shadowStyle = organProfile
     ? `0 8px 32px rgba(0, 0, 0, 0.25), 0 0 30px ${organProfile.color}15`
     : '0 8px 32px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.06) inset, 0 0 48px rgba(52, 211, 153, 0.08)'
 
+  if (!organProfile) {
+    return (
+      <div 
+        className="premium-glass rounded-3xl p-8 md:p-10 shadow-glass-glow-lg flex flex-col justify-between h-[680px] max-h-[680px] overflow-hidden pe-organ-card"
+        style={{
+          boxShadow: shadowStyle,
+          borderColor: borderStyle
+        }}
+      />
+    )
+  }
+
   return (
     <div 
-      className="premium-glass rounded-3xl p-8 md:p-10 shadow-glass-glow-lg flex flex-col justify-between h-[680px] max-h-[680px] overflow-hidden transition-all duration-500 ease-out border"
+      className={`premium-glass rounded-3xl p-8 md:p-10 shadow-glass-glow-lg flex flex-col justify-between h-[680px] max-h-[680px] overflow-hidden pe-organ-card ${isOrganSelected ? 'pe-organ-card--visible' : ''}`}
       style={{
         boxShadow: shadowStyle,
         borderColor: borderStyle
@@ -142,167 +163,68 @@ export default function OrganDetailsCard({ activeRegion = null, onClear, profile
     >
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Wrap in key to animate on region change */}
-        <div key={activeRegion || 'fallback'} className="animate-fade-in flex-1 flex flex-col min-h-0 overflow-hidden">
-          {!isOrganSelected ? (
-            <>
-              <div className="flex justify-between items-center mb-6 shrink-0">
-                <h3 className="text-lg font-mono text-accent2 uppercase tracking-wider">
-                  SYSTEM INSPECTOR
+        <div key={currentRegion} className="animate-fade-in flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="flex justify-between items-start mb-6 shrink-0">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl" role="img" aria-label={organProfile.name}>{organProfile.icon}</span>
+                <h3 className="text-2xl font-bold tracking-tight text-white/90">
+                  {organProfile.name}
                 </h3>
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-mono animate-pulse">
-                  ONLINE
-                </span>
               </div>
+              <span 
+                className="text-[10px] font-mono tracking-wider uppercase mt-1 inline-block"
+                style={{ color: organProfile.color }}
+              >
+                {organProfile.system}
+              </span>
+            </div>
+            <button 
+              onClick={onClear}
+              className="text-xs text-white/40 hover:text-white/70 transition-colors uppercase font-mono tracking-wider bg-white/5 border border-white/10 px-2.5 py-1 rounded-md"
+            >
+              Reset
+            </button>
+          </div>
 
-              <div className="overflow-y-auto overflow-x-hidden pr-1.5 space-y-5 flex-1 custom-scrollbar">
-                <p className="text-sm opacity-70 leading-relaxed">
-                  Holographic particle scanning module loaded. Hover or click on the 3D model regions to retrieve real-time anatomical classifications, descriptions, and common clinical pathologies.
-                </p>
+          <div className="overflow-y-auto overflow-x-hidden pr-1.5 space-y-6 flex-1 custom-scrollbar">
+            <div className="pt-4 shrink-0">
+              <h4 className="text-xs font-mono text-white/50 uppercase tracking-widest mb-2">DESCRIPTION</h4>
+              <p className="text-sm opacity-80 leading-relaxed">
+                {organProfile.description}
+              </p>
+            </div>
 
-                {profile ? (
-                  <div className="space-y-4">
-                    <h4 className="text-xs font-mono text-accent2 uppercase tracking-wider border-b border-white/10 pb-1.5">BIOMETRIC VITALS</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      {[
-                        { label: 'GENDER', value: profile.gender || '—' },
-                        { label: 'BLOOD TYPE', value: profile.bloodType || '—' },
-                        { label: 'HEIGHT', value: profile.heightCm ? `${profile.heightCm} cm` : '—' },
-                        {
-                          label: 'WEIGHT',
-                          value: profile.weightKg ? `${profile.weightKg} kg` : '—',
-                          sparkline: generateMockTrend(profile.weightKg, 2),
-                          sparkColor: '#5eead4',
-                        },
-                        {
-                          label: 'BMI',
-                          value: profile.bmi || '—',
-                          sparkline: generateMockTrend(profile.bmi, 3),
-                          sparkColor: '#22d3ee',
-                        },
-                        { label: 'EYESIGHT LEFT', value: profile.eyesightLeft || '—' },
-                        { label: 'EYESIGHT RIGHT', value: profile.eyesightRight || '—' },
-                      ].map((s) => (
-                        <div key={s.label} className="border border-white/5 rounded-xl p-4 bg-white/5 text-center stat-card-hover">
-                          <p className="text-[10px] font-mono text-white/40 tracking-wide mb-1">{s.label}</p>
-                          <p className="font-extrabold text-lg tracking-tight text-white">{s.value}</p>
-                          {s.sparkline && <Sparkline data={s.sparkline} color={s.sparkColor} height={24} />}
-                        </div>
-                      ))}
-                    </div>
-
-                    {profile.allergies?.length > 0 && (
-                      <div className="border border-white/5 rounded-xl p-4 bg-white/5 text-left">
-                        <p className="text-[10px] font-mono text-white/40 mb-2 tracking-wide">ALLERGIES</p>
-                        <div className="flex flex-wrap gap-2">
-                          {profile.allergies.map((a) => (
-                            <span key={a} className="text-xs bg-red-500/20 text-red-300 px-2.5 py-1 rounded-full allergy-alert">{a}</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {profile.doctorVerified && (
-                      <div className="border border-white/5 rounded-xl p-3.5 flex items-center gap-2 text-green-400 bg-white/5 text-xs font-mono">
-                        <span className="text-sm">✓</span>
-                        <span>DOCTOR VERIFIED PROFILE</span>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="border border-white/5 rounded-xl p-4 bg-white/5">
-                      <div className="text-[10px] font-mono text-white/40">BLOOD PRESSURE</div>
-                      <div className="text-lg font-mono text-white/90 mt-1">120/80 <span className="text-xs text-white/50">mmHg</span></div>
-                    </div>
-                    <div className="border border-white/5 rounded-xl p-4 bg-white/5">
-                      <div className="text-[10px] font-mono text-white/40">SPO2 CAPACITY</div>
-                      <div className="text-lg font-mono text-white/90 mt-1">99% <span className="text-xs text-emerald-400">NOMINAL</span></div>
-                    </div>
-                    <div className="border border-white/5 rounded-xl p-4 bg-white/5">
-                      <div className="text-[10px] font-mono text-white/40">CORE TEMPERATURE</div>
-                      <div className="text-lg font-mono text-white/90 mt-1">98.6°F <span className="text-xs text-white/50">37.0°C</span></div>
-                    </div>
-                    <div className="border border-white/5 rounded-xl p-4 bg-white/5">
-                      <div className="text-[10px] font-mono text-white/40">COGNITIVE INDEX</div>
-                      <div className="text-lg font-mono text-white/90 mt-1">99.2% <span className="text-xs text-emerald-400">STABLE</span></div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex justify-between items-start mb-6 shrink-0">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl" role="img" aria-label={organProfile.name}>{organProfile.icon}</span>
-                    <h3 className="text-2xl font-bold tracking-tight text-white/90">
-                      {organProfile.name}
-                    </h3>
-                  </div>
-                  <span 
-                    className="text-[10px] font-mono tracking-wider uppercase mt-1 inline-block"
-                    style={{ color: organProfile.color }}
+            <div>
+              <h4 className="text-xs font-mono text-white/50 uppercase tracking-widest mb-4">COMMON PATHOLOGIES & DISEASES</h4>
+              <div className="space-y-3.5 pr-1">
+                {organProfile.diseases.map((d, index) => (
+                  <div 
+                    key={index} 
+                    className="stat-card-hover border-transparent hover:border-transparent rounded-xl p-3.5 bg-[#0c1a14]/40 hover:bg-[#0c1a14]/65"
                   >
-                    {organProfile.system}
-                  </span>
-                </div>
-                <button 
-                  onClick={onClear}
-                  className="text-xs text-white/40 hover:text-white/70 transition-colors uppercase font-mono tracking-wider bg-white/5 border border-white/10 px-2.5 py-1 rounded-md"
-                >
-                  Reset
-                </button>
-              </div>
-
-              <div className="overflow-y-auto overflow-x-hidden pr-1.5 space-y-6 flex-1 custom-scrollbar">
-                <div className="border-t border-white/10 pt-4 shrink-0">
-                  <h4 className="text-xs font-mono text-white/50 uppercase tracking-widest mb-2">DESCRIPTION</h4>
-                  <p className="text-sm opacity-80 leading-relaxed">
-                    {organProfile.description}
-                  </p>
-                </div>
-
-                <div>
-                  <h4 className="text-xs font-mono text-white/50 uppercase tracking-widest mb-4">COMMON PATHOLOGIES & DISEASES</h4>
-                  <div className="space-y-3.5 pr-1">
-                    {organProfile.diseases.map((d, index) => (
-                      <div 
-                        key={index} 
-                        className="stat-card-hover border border-white/5 rounded-xl p-3.5 bg-[#0c1a14]/40 hover:bg-[#0c1a14]/65"
-                      >
-                        <p 
-                          className="font-bold text-sm tracking-wide"
-                          style={{ color: organProfile.color }}
-                        >
-                          {d.name}
-                        </p>
-                        <p className="text-xs text-white/70 mt-1 leading-relaxed">
-                          {d.desc}
-                        </p>
-                      </div>
-                    ))}
+                    <p 
+                      className="font-bold text-sm tracking-wide"
+                      style={{ color: organProfile.color }}
+                    >
+                      {d.name}
+                    </p>
+                    <p className="text-xs text-white/70 mt-1 leading-relaxed">
+                      {d.desc}
+                    </p>
                   </div>
-                </div>
+                ))}
               </div>
-            </>
-          )}
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="mt-8 pt-4 border-t border-white/10 flex justify-between items-center text-[10px] font-mono text-white/40 shrink-0">
-        {!isOrganSelected ? (
-          <span className="w-full text-center tracking-widest uppercase text-accent2/40 text-[9px]">
-            Interact with the 3D hologram to scan specific organs
-          </span>
-        ) : (
-          <>
-            <span>BIOMETRIC SCANNER v2.0</span>
-            <span style={{ color: organProfile.color }} className="animate-pulse font-bold transition-colors duration-500">
-              TARGET MONITORED
-            </span>
-          </>
-        )}
+      <div className="mt-8 pt-4 flex justify-between items-center text-[10px] font-mono text-white/40 shrink-0">
+        <span>BIOMETRIC SCANNER v2.0</span>
+        <span style={{ color: organProfile.color }} className="animate-pulse font-bold transition-colors duration-500">
+          TARGET MONITORED
+        </span>
       </div>
     </div>
   )

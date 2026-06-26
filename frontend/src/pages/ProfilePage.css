@@ -1,3 +1,34 @@
+/* Custom scrollbar for Profile Page */
+html, body {
+  overflow-y: auto !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(29, 201, 127, 0.25) rgba(13, 17, 23, 0.6) !important;
+}
+
+/* Custom scrollbar track/thumb for Webkit browsers */
+::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(13, 17, 23, 0.4) !important;
+  border-radius: 9999px !important;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(29, 201, 127, 0.25) !important;
+  border-radius: 9999px !important;
+  border: 2px solid transparent !important;
+  background-clip: padding-box !important;
+  transition: background 0.3s ease !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(29, 201, 127, 0.5) !important;
+  background-clip: padding-box !important;
+}
+
 /* Profile page enterprise theme — scoped below navbar only */
 .profile-enterprise {
   --pe-bg: #0d1117;
@@ -35,26 +66,50 @@
 }
 
 .profile-enterprise__left {
-  padding: 20px 16px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  border-right: 0.5px solid var(--pe-border-soft);
   overflow-y: auto;
+  height: 100%;
+}
+
+/* Custom scrollbar for left column */
+.profile-enterprise__left::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.profile-enterprise__left::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.profile-enterprise__left::-webkit-scrollbar-thumb {
+  background: rgba(29, 201, 127, 0.18);
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+.profile-enterprise__left::-webkit-scrollbar-thumb:hover {
+  background: rgba(29, 201, 127, 0.35);
+  background-clip: padding-box;
+}
+
+.profile-enterprise__left {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(29, 201, 127, 0.18) transparent;
 }
 
 .profile-enterprise__center {
   display: flex;
   flex-direction: column;
-  border-right: 0.5px solid var(--pe-border-soft);
   padding: 16px;
 }
 
 .profile-enterprise__right {
-  padding: 16px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  padding: 16px;
+  position: relative;
   overflow: hidden;
   height: 100%;
   min-height: 0;
@@ -62,10 +117,40 @@
 
 /* Left — Profile ID card */
 .pe-profile-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 0.5px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  padding: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  padding: 16px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pe-profile-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(29, 201, 127, 0.25);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), 0 0 15px rgba(29, 201, 127, 0.12);
+  transform: translateY(-2px);
+}
+
+.pe-profile-card-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--pe-accent), rgba(29, 201, 127, 0.5));
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+}
+
+.pe-profile-card:hover .pe-profile-card-indicator {
+  opacity: 1;
 }
 
 .pe-avatar-row {
@@ -126,7 +211,7 @@
 
 .pe-hid-block {
   background: rgba(0, 0, 0, 0.25);
-  border: 0.5px solid var(--pe-border);
+  border: none;
   border-radius: 7px;
   padding: 8px 10px;
   margin-bottom: 10px;
@@ -151,33 +236,36 @@
 .pe-meta-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 8px;
 }
 
 .pe-meta-chip {
-  background: rgba(0, 0, 0, 0.2);
-  border: 0.5px solid var(--pe-border-soft);
-  border-radius: 7px;
-  padding: 7px 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .pe-meta-chip-label {
-  font-size: 9px;
+  font-size: 8px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
   color: rgba(255, 255, 255, 0.3);
-  margin-bottom: 2px;
+  margin-bottom: 3px;
 }
 
 .pe-meta-chip-value {
-  font-size: 12px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .pe-edit-btn {
   width: 100%;
-  margin-top: 10px;
+  margin-top: auto;
   background: var(--pe-accent);
   color: var(--pe-bg);
   border: none;
@@ -200,9 +288,36 @@
 /* Left — Quick summary */
 .pe-summary-card {
   background: rgba(255, 255, 255, 0.03);
-  border: 0.5px solid var(--pe-border);
-  border-radius: 10px;
-  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  padding: 16px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pe-summary-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(29, 201, 127, 0.25);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), 0 0 15px rgba(29, 201, 127, 0.12);
+  transform: translateY(-2px);
+}
+
+.pe-summary-card-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--pe-accent), rgba(29, 201, 127, 0.5));
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+}
+
+.pe-summary-card:hover .pe-summary-card-indicator {
+  opacity: 1;
 }
 
 .pe-summary-title {
@@ -245,7 +360,7 @@
   flex: 1;
   position: relative;
   background: rgba(255, 255, 255, 0.04);
-  border: 0.5px solid rgba(255, 255, 255, 0.1);
+  border: none;
   border-radius: 10px;
   overflow: hidden;
   min-height: 420px;
@@ -493,20 +608,127 @@
   border-color: var(--pe-border-soft);
 }
 
+/* Biometric Vitals section on left profile container */
+.pe-vitals-divider {
+  height: 0.5px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 14px 0;
+}
+
+.pe-vitals-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.pe-vitals-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.35);
+  margin-bottom: 2px;
+}
+
+.pe-vitals-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.pe-vital-item {
+  background: rgba(0, 0, 0, 0.25);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.pe-vital-item--eyesight {
+  grid-column: 1 / -1;
+}
+
+.pe-vital-label {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.3);
+  margin-bottom: 3px;
+}
+
+.pe-vital-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.pe-bmi-label {
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--pe-warn);
+  margin-left: 4px;
+}
+
+.pe-bmi-bar {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  margin-top: 5px;
+  overflow: hidden;
+}
+
+.pe-bmi-bar-fill {
+  height: 100%;
+  background: var(--pe-warn);
+  border-radius: 2px;
+}
+
+.pe-allergies-block {
+  background: rgba(255, 255, 255, 0.02);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-top: 2px;
+}
+
+.pe-allergies-block .pe-vital-label {
+  margin-bottom: 6px;
+}
+
+/* Organ Details Card Pop-up Transitions */
+.pe-organ-card {
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease-out, border-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transform: scale(0.92) translateY(20px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pe-organ-card--visible {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .profile-enterprise__right > div {
-  height: 100% !important;
+  position: absolute !important;
+  inset: 16px !important;
+  width: calc(100% - 32px) !important;
+  height: calc(100% - 32px) !important;
   max-height: none !important;
-  border-radius: 10px !important;
+  border-radius: 12px !important;
   background: rgba(255, 255, 255, 0.03) !important;
   backdrop-filter: blur(10px) !important;
   -webkit-backdrop-filter: blur(10px) !important;
+  border: none !important;
   transition: border-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Tabs section below grid */
+/* Tabs section below grid */
 .pe-tabs-section {
-  border-top: 0.5px solid var(--pe-border-soft);
-  padding: 24px 20px 32px;
+  padding: 28px 20px 48px;
   background: transparent;
   max-width: 1280px;
   margin: 0 auto;
@@ -514,39 +736,422 @@
 }
 
 .pe-tabs-nav {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 768px) {
+  .pe-tabs-nav {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .pe-tabs-nav {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pe-tab-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  padding: 14px 18px;
   display: flex;
-  gap: 0;
-  border-bottom: 0.5px solid var(--pe-border-soft);
-  margin-bottom: 16px;
-  overflow-x: auto;
-}
-
-.pe-tab-btn {
-  padding: 10px 16px;
-  font-size: 13px;
-  white-space: nowrap;
-  border: none;
-  background: none;
-  color: rgba(255, 255, 255, 0.45);
-  border-bottom: 2px solid transparent;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
   cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  width: 100%;
 }
 
-.pe-tab-btn--active {
-  color: var(--pe-accent);
-  border-bottom-color: var(--pe-accent);
+.pe-tab-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+  transform: translateY(-2px);
 }
 
-.pe-panel-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 0.5px solid var(--pe-border);
+.pe-tab-card--active {
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), inset 0 0 12px rgba(255, 255, 255, 0.01);
+}
+
+.pe-tab-card-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.pe-tab-card--active .pe-tab-card-indicator {
+  opacity: 1;
+}
+
+.pe-tab-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+.pe-tab-card:hover .pe-tab-icon-wrap {
+  transform: scale(1.1);
+}
+
+.pe-tab-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  line-height: 1.2;
+}
+
+.pe-tab-card-status {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 3px;
+}
+
+.pe-tab-card-count {
+  font-weight: 700;
+}
+
+/* Feature detail cards display */
+.pe-feature-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.pe-feature-card:hover {
+  background: rgba(255, 255, 255, 0.04);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.pe-feature-card--vaccination {
+  border-left: 3px solid #1dc97f;
+}
+
+.pe-feature-card--history {
+  border-left: 3px solid #33b2ff;
+}
+
+.pe-feature-card--disease {
+  border-left: 3px solid #ef9f27;
+}
+
+.pe-feature-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.pe-feature-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pe-feature-badge--vaccination {
+  background: rgba(29, 201, 127, 0.1);
+  color: #1dc97f;
+}
+
+.pe-feature-badge--history {
+  background: rgba(51, 178, 255, 0.1);
+  color: #33b2ff;
+}
+
+.pe-feature-badge--disease {
+  background: rgba(239, 159, 39, 0.1);
+  color: #ef9f27;
+}
+
+.pe-pulse-dot {
+  width: 6px;
+  height: 6px;
+  background: #33b2ff;
+  border-radius: 50%;
+  animation: pe-dot-pulse 1.8s infinite ease-in-out;
+}
+
+@keyframes pe-dot-pulse {
+  0%, 100% {
+    transform: scale(0.85);
+    opacity: 0.5;
+    box-shadow: 0 0 0 0 rgba(51, 178, 255, 0.4);
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+    box-shadow: 0 0 8px 2px rgba(51, 178, 255, 0.6);
+  }
+}
+
+.pe-feature-next-due {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: #1dc97f;
+  background: rgba(29, 201, 127, 0.08);
+  padding: 2px 8px;
+  border-radius: 5px;
+}
+
+.pe-feature-name {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0;
+}
+
+.pe-feature-meta {
+  display: flex;
+  gap: 20px;
+}
+
+.pe-feature-meta-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.pe-feature-meta-label {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pe-feature-meta-value {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+  margin-top: 1px;
+}
+
+/* AI Analysis Dashboard Container */
+.pe-ai-analysis-container {
+  width: 100%;
+}
+
+.pe-ai-score-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  height: 100%;
+}
+
+.pe-ai-gauge-wrap {
+  position: relative;
+  width: 130px;
+  height: 130px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pe-ai-gauge-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 4px solid rgba(178, 128, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle, rgba(178, 128, 255, 0.06), transparent 70%);
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 0 20px rgba(178, 128, 255, 0.05), inset 0 0 10px rgba(178, 128, 255, 0.05);
+}
+
+.pe-ai-gauge-score {
+  font-size: 34px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.1;
+  text-shadow: 0 0 12px rgba(178, 128, 255, 0.4);
+  background: linear-gradient(135deg, #fff, rgba(178, 128, 255, 0.9));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.pe-ai-gauge-label {
+  font-size: 8px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.1em;
+  margin-top: 2px;
+}
+
+.pe-ai-gauge-effect {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: #b280ff;
+  border-right-color: #b280ff;
+  animation: pe-gauge-spin 6s linear infinite;
+  opacity: 0.65;
+  filter: drop-shadow(0 0 6px rgba(178, 128, 255, 0.6));
+}
+
+@keyframes pe-gauge-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.pe-ai-run-btn {
+  width: 100%;
+  background: linear-gradient(135deg, rgba(178, 128, 255, 0.92), rgba(154, 93, 247, 0.88));
+  color: #fff;
+  border: none;
   border-radius: 10px;
-  padding: 14px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(178, 128, 255, 0.25);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
-.pe-panel-card + .pe-panel-card {
-  margin-top: 10px;
+.pe-ai-run-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(178, 128, 255, 0.38), 0 0 15px rgba(178, 128, 255, 0.15);
+}
+
+.pe-ai-run-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pe-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: pe-spin 0.8s linear infinite;
+}
+
+@keyframes pe-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.pe-ai-subcard {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  padding: 16px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.pe-ai-subcard--diet { border-left: 3px solid #1dc97f; }
+.pe-ai-subcard--lifestyle { border-left: 3px solid #33b2ff; }
+.pe-ai-subcard--warning { border-left: 3px solid #ef9f27; }
+.pe-ai-subcard--checkup { border-left: 3px solid #b280ff; }
+
+.pe-ai-subcard-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0 0 10px;
+}
+
+.pe-ai-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pe-ai-list li {
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.8;
+  position: relative;
+  padding-left: 14px;
+}
+
+.pe-ai-list li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.pe-ai-empty {
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px dashed rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 40px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.pe-ai-empty-icon {
+  font-size: 2.2rem;
+  margin-bottom: 12px;
+  opacity: 0.35;
+}
+
+.pe-ai-empty p {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  max-width: 280px;
+  margin: 0;
+  line-height: 1.45;
 }
 
 /* Edit drawer */
@@ -575,7 +1180,16 @@
   overflow-y: auto;
   padding: 16px;
   background: #0d1117;
-  border-left: 0.5px solid var(--pe-border);
+  border-left: none;
+  color-scheme: dark;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.pe-edit-drawer::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .pe-edit-drawer h2 {
@@ -656,6 +1270,61 @@
   height: 100% !important;
 }
 
+/* Right Column Placeholder State when no organ is scanned */
+.pe-right-inactive-wrap {
+  position: absolute;
+  inset: 16px;
+  width: calc(100% - 32px);
+  height: calc(100% - 32px) !important;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  z-index: 1;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+.pe-right-inactive-wrap > div {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: calc(50% - 6px) !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+}
+
+.pe-right-inactive-wrap .pe-summary-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.pe-right-inactive-wrap--hidden {
+  opacity: 0;
+  transform: scale(0.95);
+  pointer-events: none;
+}
+
+/* Pulsing Scanner Effect for HUD */
+.pe-scan-pulse {
+  animation: pulse-glow-hud 2.5s infinite ease-in-out;
+  color: var(--pe-accent) !important;
+  text-shadow: 0 0 8px rgba(29, 201, 127, 0.4);
+}
+
+@keyframes pulse-glow-hud {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 @media (max-width: 1024px) {
   .profile-enterprise__grid {
     grid-template-columns: 1fr;
@@ -669,6 +1338,7 @@
     height: auto !important;
     border-right: none;
     border-bottom: 0.5px solid var(--pe-border-soft);
+    padding: 16px !important;
   }
 
   .pe-scan-viewport {
@@ -677,7 +1347,15 @@
   }
 
   .profile-enterprise__right > div {
+    position: static !important;
+    width: 100% !important;
     height: auto !important;
     max-height: none !important;
+  }
+
+  .pe-right-inactive-wrap {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
   }
 }

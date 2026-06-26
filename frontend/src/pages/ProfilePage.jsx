@@ -112,8 +112,36 @@ function profileToEditForm(profile) {
 
     allergies: profile.allergies ? [...profile.allergies] : [],
 
+    birthDate: profile.birthDate || '',
+
   }
 
+}
+
+function calculateHealthScore(profile, history) {
+  let score = 94 // Base healthy score
+  
+  // Deduct based on BMI
+  const bmi = Number(profile.bmi)
+  if (bmi) {
+    if (bmi < 18.5 || (bmi >= 25 && bmi < 30)) {
+      score -= 5 // Slightly underweight or overweight
+    } else if (bmi >= 30) {
+      score -= 12 // Obese
+    }
+  }
+  
+  // Deduct based on medical history
+  if (history && history.length > 0) {
+    score -= Math.min(15, history.length * 4)
+  }
+  
+  // Deduct based on allergies
+  if (profile.allergies && profile.allergies.length > 0) {
+    score -= Math.min(7, profile.allergies.length * 2)
+  }
+  
+  return Math.max(50, Math.min(100, score))
 }
 
 
@@ -155,6 +183,24 @@ export default function ProfilePage() {
 
 
 
+  const [hudCoords, setHudCoords] = useState({ x: '0.00', y: '0.00' })
+
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = ((e.clientX - rect.left) / rect.width) * 2 - 1
+    const y = -(((e.clientY - rect.top) / rect.height) * 2 - 1)
+    setHudCoords({
+      x: x.toFixed(2),
+      y: y.toFixed(2),
+    })
+  }
+
+  const handleMouseLeave = () => {
+    setHudCoords({ x: '0.00', y: '0.00' })
+  }
+
+
+
   useEffect(() => {
 
     if (!loading && !user) navigate('/login')
@@ -174,6 +220,10 @@ export default function ProfilePage() {
     api.getPreviousDiseases().then(setDiseases).catch(() => {})
 
   }, [user])
+
+  useEffect(() => {
+    setAiAnalysis(null)
+  }, [tab, activeRegion])
 
 
 
@@ -337,6 +387,8 @@ export default function ProfilePage() {
 
         weightKg,
 
+        birthDate: editForm.birthDate || null,
+
         eyesightLeft: editForm.eyesightLeft || null,
 
         eyesightRight: editForm.eyesightRight || null,
@@ -346,7 +398,7 @@ export default function ProfilePage() {
       })
 
       await refreshProfile()
-
+      setAiAnalysis(null)
       setEditOpen(false)
 
     } catch (e) {
@@ -372,6 +424,131 @@ export default function ProfilePage() {
   const bmiDisplay = profile.bmi ?? '—'
   const heightSparkline = generateMockTrend(profile.heightCm, 1)
   const weightSparkline = generateMockTrend(profile.weightKg, 2)
+
+  const healthScore = aiAnalysis ? calculateHealthScore(profile, history) : null
+
+  const getRiskAreas = () => {
+    if (aiAnalysis?.riskAreas && aiAnalysis.riskAreas.length > 0) {
+      return aiAnalysis.riskAreas
+    }
+    const score = healthScore || 94
+    if (score >= 90) {
+      return [
+        'Minimal physiological risk detected',
+        'Monitor active hydration levels during heat cycles'
+      ]
+    } else if (score >= 75) {
+      return [
+        'Mild postural stress or sedentary fatigue potential',
+        'Allergy sensitivity triggers should be monitored'
+      ]
+    } else {
+      return [
+        'Elevated BMI or vital fluctuations require clinical correlation',
+        'Allergy risk and chronic history monitoring advised'
+      ]
+    }
+  }
+
+  const getLifestyleTips = () => {
+    if (aiAnalysis?.lifestyleTips && aiAnalysis.lifestyleTips.length > 0) {
+      return aiAnalysis.lifestyleTips
+    }
+    const score = healthScore || 94
+    if (score >= 90) {
+      return [
+        'Maintain consistency with 7-8 hours of restful sleep',
+        'Continue active physical conditioning (30 mins cardio daily)',
+        'Optimize cognitive wellness with regular mindfulness breaks'
+      ]
+    } else {
+      return [
+        'Improve sleep hygiene: aim for a consistent sleep cycle',
+        'Integrate stretching and daily active intervals',
+        'Limit screen exposure 30 mins before sleep'
+      ]
+    }
+  }
+
+  const getNextCheckups = () => {
+    if (aiAnalysis?.nextCheckups && aiAnalysis.nextCheckups.length > 0) {
+      return aiAnalysis.nextCheckups
+    }
+    const score = healthScore || 94
+    if (score >= 90) {
+      return [
+        'Routine health review in 6 months',
+        'Standard dental and optical checkups annually'
+      ]
+    } else {
+      return [
+        'Routine lipid and vital panel in 3 months',
+        'Clinical consult for allergy management review'
+      ]
+    }
+  }
+
+  const getDietRecommendations = () => {
+    if (aiAnalysis?.dietRecommendations && aiAnalysis.dietRecommendations.length > 0) {
+      return aiAnalysis.dietRecommendations
+    }
+    return [
+      'Increase dietary fiber with whole grains and legumes',
+      'Incorporate fresh seasonal fruits as daily snacks',
+      'Optimize lean protein intake matching metabolic needs'
+    ]
+  }
+
+  const tabData = [
+    {
+      title: 'Vaccinations',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+      ),
+      count: vaccinations.length,
+      unit: 'Recorded',
+      color: '#1dc97f',
+      glow: 'rgba(29, 201, 127, 0.15)',
+    },
+    {
+      title: 'Medical History',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+        </svg>
+      ),
+      count: history.length,
+      unit: 'Records',
+      color: '#33b2ff',
+      glow: 'rgba(51, 178, 255, 0.15)',
+    },
+    {
+      title: 'Previous Diseases',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      ),
+      count: diseases.length,
+      unit: 'Resolved',
+      color: '#ef9f27',
+      glow: 'rgba(239, 159, 39, 0.15)',
+    },
+    {
+      title: 'AI Analysis',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+        </svg>
+      ),
+      count: healthScore ? `Score: ${healthScore}` : 'Ready',
+      unit: healthScore ? 'Analysis' : 'Report',
+      color: '#b280ff',
+      glow: 'rgba(178, 128, 255, 0.15)',
+    },
+  ]
 
   return (
     <main className="profile-enterprise">
@@ -415,49 +592,70 @@ export default function ProfilePage() {
               </div>
             </div>
 
+            <div className="pe-vitals-section">
+              <div className="pe-vitals-title">Biometric Vitals</div>
+              <div className="pe-vitals-grid">
+                <div className="pe-vital-item">
+                  <span className="pe-vital-label">Height</span>
+                  <span className="pe-vital-value">{heightDisplay} cm</span>
+                </div>
+                <div className="pe-vital-item">
+                  <span className="pe-vital-label">Weight</span>
+                  <span className="pe-vital-value">{weightDisplay} kg</span>
+                  {weightSparkline && <Sparkline data={weightSparkline} color="#5eead4" height={16} />}
+                </div>
+                <div className="pe-vital-item">
+                  <span className="pe-vital-label">BMI</span>
+                  <span className="pe-vital-value">
+                    {bmiDisplay} <span className="pe-bmi-label">{getBmiLabel(profile.bmi)}</span>
+                  </span>
+                  {profile.bmi && (
+                    <div className="pe-bmi-bar">
+                      <div className="pe-bmi-bar-fill" style={{ width: `${getBmiBarPercent(profile.bmi)}%` }} />
+                    </div>
+                  )}
+                </div>
+                <div className="pe-vital-item pe-vital-item--eyesight">
+                  <span className="pe-vital-label">Eyesight (L/R)</span>
+                  <span className="pe-vital-value">
+                    {profile.eyesightLeft || profile.eyesightRight
+                      ? `${profile.eyesightLeft || '—'} / ${profile.eyesightRight || '—'}`
+                      : '—'}
+                  </span>
+                </div>
+              </div>
+
+              {profile.allergies?.length > 0 && (
+                <div className="pe-allergies-block">
+                  <div className="pe-vital-label">Allergies</div>
+                  <div className="pe-allergy-tags">
+                    {profile.allergies.map((a) => (
+                      <span key={a} className={`pe-allergy-tag ${getAllergyTagClass(a)}`}>
+                        {a}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <button type="button" onClick={openEdit} className="pe-edit-btn">
               <span aria-hidden="true">✎</span>
               Edit Profile
             </button>
           </div>
-
-          <div className="pe-summary-card">
-            <div className="pe-summary-title">Quick Summary</div>
-            <div className="pe-summary-row">
-              <span className="pe-summary-key">Last visit</span>
-              <span className="pe-summary-value">
-                {profile.lastAiAnalysis
-                  ? new Date(profile.lastAiAnalysis).toLocaleDateString('en-GB', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    })
-                  : '12 Jun 2025'}
-              </span>
-            </div>
-            <div className="pe-summary-row">
-              <span className="pe-summary-key">Doctor</span>
-              <span className="pe-summary-value">Dr. Perera</span>
-            </div>
-            <div className="pe-summary-row">
-              <span className="pe-summary-key">Next appt.</span>
-              <span className="pe-summary-value pe-summary-value--warn">30 Jun 2025</span>
-            </div>
-            <div className="pe-summary-row">
-              <span className="pe-summary-key">Active Rx</span>
-              <span className="pe-summary-value">2 active</span>
-            </div>
-          </div>
         </aside>
 
         <section className="profile-enterprise__center">
-          <div className="pe-scan-viewport">
+          <div className="pe-scan-viewport" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
 
             <div className="pe-crosshair">
-              <span className="pe-crosshair-label pe-crosshair-label--tl">X: 0.00</span>
-              <span className="pe-crosshair-label pe-crosshair-label--tr">Y: 0.00</span>
-              <span className="pe-crosshair-label pe-crosshair-label--bl">Z: 1.84m</span>
-              <span className="pe-crosshair-label pe-crosshair-label--br">WT: {weightDisplay}kg</span>
+              <span className="pe-crosshair-label pe-crosshair-label--tl">X: {hudCoords.x}</span>
+              <span className="pe-crosshair-label pe-crosshair-label--tr">Y: {hudCoords.y}</span>
+              <span className="pe-crosshair-label pe-crosshair-label--bl">
+                Z: {profile.heightCm ? (profile.heightCm / 100).toFixed(2) + 'm' : '—'}
+              </span>
+              <span className="pe-crosshair-label pe-crosshair-label--br pe-scan-pulse">SCAN: ACTIVE</span>
             </div>
             <div className="pe-humanoid-wrap">
               <HumanoidFigure
@@ -469,28 +667,39 @@ export default function ProfilePage() {
               />
             </div>
           </div>
-
-          <footer className="pe-scan-footer">
-            <div className="pe-stat">
-              <div className="pe-stat-label">Height</div>
-              <div className="pe-stat-value">{heightDisplay} cm</div>
-            </div>
-            <div className="pe-stat">
-              <div className="pe-stat-label">Weight</div>
-              <div className="pe-stat-value">{weightDisplay} kg</div>
-            </div>
-            <div className="pe-stat">
-              <div className="pe-stat-label">BMI</div>
-              <div className="pe-stat-value pe-stat-value--warn">{bmiDisplay}</div>
-            </div>
-            <div className="pe-stat">
-              <div className="pe-stat-label">Scan status</div>
-              <div className="pe-stat-value pe-stat-value--accent">Active</div>
-            </div>
-          </footer>
         </section>
 
-        <aside className="profile-enterprise__right">
+        <aside className="profile-enterprise__right" style={{ position: 'relative' }}>
+          <div className={`pe-right-inactive-wrap ${displayRegion ? 'pe-right-inactive-wrap--hidden' : ''}`}>
+            <div className="pe-summary-card">
+              <div className="pe-summary-title">Quick Summary</div>
+              <div className="pe-summary-row">
+                <span className="pe-summary-key">Last visit</span>
+                <span className="pe-summary-value">
+                  {profile.lastAiAnalysis
+                    ? new Date(profile.lastAiAnalysis).toLocaleDateString('en-GB', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })
+                    : '12 Jun 2025'}
+                </span>
+              </div>
+              <div className="pe-summary-row">
+                <span className="pe-summary-key">Doctor</span>
+                <span className="pe-summary-value">Dr. Perera</span>
+              </div>
+              <div className="pe-summary-row">
+                <span className="pe-summary-key">Next appt.</span>
+                <span className="pe-summary-value pe-summary-value--warn">30 Jun 2025</span>
+              </div>
+              <div className="pe-summary-row">
+                <span className="pe-summary-key">Active Rx</span>
+                <span className="pe-summary-value">2 active</span>
+              </div>
+            </div>
+          </div>
+
           <OrganDetailsCard
             activeRegion={displayRegion}
             onClear={() => {
@@ -504,117 +713,222 @@ export default function ProfilePage() {
 
       <section className="pe-tabs-section">
         <div className="pe-tabs-nav">
-          {TABS.map((t, i) => (
+          {tabData.map((item, i) => (
             <button
-              key={t}
+              key={item.title}
               type="button"
               onClick={() => setTab(i)}
-              className={`pe-tab-btn ${tab === i ? 'pe-tab-btn--active' : ''}`}
+              className={`pe-tab-card ${tab === i ? 'pe-tab-card--active' : ''}`}
+              style={{
+                borderColor: tab === i ? `${item.color}35` : '',
+                boxShadow: tab === i ? `0 8px 24px rgba(0,0,0,0.25), 0 0 15px ${item.glow}` : '',
+              }}
             >
-              {t}
+              <div 
+                className="pe-tab-card-indicator" 
+                style={{ background: `linear-gradient(90deg, ${item.color}, ${item.color}88)` }} 
+              />
+              
+              <div className="flex items-center gap-3 w-full">
+                <div 
+                  className="pe-tab-icon-wrap"
+                  style={{
+                    color: item.color,
+                    background: `${item.color}12`,
+                  }}
+                >
+                  {item.icon}
+                </div>
+                <div>
+                  <div className="pe-tab-card-title">{item.title}</div>
+                  <div className="pe-tab-card-status">
+                    <span className="pe-tab-card-count" style={{ color: tab === i ? '#fff' : 'rgba(255,255,255,0.7)' }}>
+                      {item.count}
+                    </span>{' '}
+                    <span className="pe-tab-card-unit">{item.unit}</span>
+                  </div>
+                </div>
+              </div>
             </button>
           ))}
         </div>
 
         {tab === 0 && (
-          <div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {vaccinations.map((v) => (
-              <div key={v.id} className="pe-panel-card flex justify-between items-center">
-                <div>
-                  <p className="font-semibold text-sm">{v.vaccineName}</p>
-                  <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                    Dose {v.doseNumber} — {v.dateAdministered}
-                  </p>
+              <div key={v.id} className="pe-feature-card pe-feature-card--vaccination">
+                <div className="pe-feature-card-header">
+                  <div className="pe-feature-badge pe-feature-badge--vaccination">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Administered</span>
+                  </div>
+                  {v.nextDueDate && (
+                    <div className="pe-feature-next-due">
+                      Next Due: {v.nextDueDate}
+                    </div>
+                  )}
                 </div>
-                {v.nextDueDate && (
-                  <span className="text-xs" style={{ color: '#1dc97f' }}>Next: {v.nextDueDate}</span>
-                )}
+                <h4 className="pe-feature-name">{v.vaccineName}</h4>
+                <div className="pe-feature-meta">
+                  <div className="pe-feature-meta-item">
+                    <span className="pe-feature-meta-label">Dose</span>
+                    <span className="pe-feature-meta-value">{v.doseNumber}</span>
+                  </div>
+                  <div className="pe-feature-meta-item">
+                    <span className="pe-feature-meta-label">Date</span>
+                    <span className="pe-feature-meta-value">{v.dateAdministered}</span>
+                  </div>
+                </div>
               </div>
             ))}
             {vaccinations.length === 0 && (
-              <p style={{ color: 'rgba(255,255,255,0.45)' }}>No vaccinations recorded.</p>
+              <div className="pe-ai-empty col-span-full">
+                <p>No vaccinations recorded.</p>
+              </div>
             )}
           </div>
         )}
 
         {tab === 1 && (
-          <div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {history.map((h) => (
-              <div key={h.id} className="pe-panel-card">
-                <p className="font-semibold text-sm">{h.conditionName}</p>
-                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                  Diagnosed: {h.diagnosedDate || '—'}
-                </p>
+              <div key={h.id} className="pe-feature-card pe-feature-card--history">
+                <div className="pe-feature-card-header">
+                  <div className="pe-feature-badge pe-feature-badge--history">
+                    <span className="pe-pulse-dot" />
+                    <span>Active Condition</span>
+                  </div>
+                </div>
+                <h4 className="pe-feature-name">{h.conditionName}</h4>
+                <div className="pe-feature-meta">
+                  <div className="pe-feature-meta-item">
+                    <span className="pe-feature-meta-label">Diagnosed</span>
+                    <span className="pe-feature-meta-value">{h.diagnosedDate || '—'}</span>
+                  </div>
+                </div>
               </div>
             ))}
             {history.length === 0 && (
-              <p style={{ color: 'rgba(255,255,255,0.45)' }}>No medical history recorded.</p>
+              <div className="pe-ai-empty col-span-full">
+                <p>No medical history recorded.</p>
+              </div>
             )}
           </div>
         )}
 
         {tab === 2 && (
-          <div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {diseases.map((d) => (
-              <div key={d.id} className="pe-panel-card">
-                <p className="font-semibold text-sm">{d.conditionName}</p>
-                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                  Resolved: {d.resolvedDate}
-                </p>
+              <div key={d.id} className="pe-feature-card pe-feature-card--disease">
+                <div className="pe-feature-card-header">
+                  <div className="pe-feature-badge pe-feature-badge--disease">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Resolved</span>
+                  </div>
+                </div>
+                <h4 className="pe-feature-name">{d.conditionName}</h4>
+                <div className="pe-feature-meta">
+                  <div className="pe-feature-meta-item">
+                    <span className="pe-feature-meta-label">Resolved Date</span>
+                    <span className="pe-feature-meta-value">{d.resolvedDate}</span>
+                  </div>
+                </div>
               </div>
             ))}
             {diseases.length === 0 && (
-              <p style={{ color: 'rgba(255,255,255,0.45)' }}>No previous diseases recorded.</p>
+              <div className="pe-ai-empty col-span-full">
+                <p>No previous diseases recorded.</p>
+              </div>
             )}
           </div>
         )}
 
         {tab === 3 && (
-          <div className="pe-panel-card">
-            <button
-              type="button"
-              onClick={runAiAnalysis}
-              disabled={aiLoading}
-              className="pe-edit-btn"
-              style={{ width: 'auto', marginTop: 0, marginBottom: 16, padding: '8px 24px' }}
-            >
-              {aiLoading ? 'Analysing...' : 'Run AI Health Analysis'}
-            </button>
+          <div className="pe-ai-analysis-container">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Column: AI Score Gauge */}
+              <div className="pe-ai-score-card">
+                <div className="pe-ai-gauge-wrap">
+                  <div className="pe-ai-gauge-circle">
+                    <span className="pe-ai-gauge-score">
+                      {healthScore ?? '—'}
+                    </span>
+                    <span className="pe-ai-gauge-label">HEALTH SCORE</span>
+                  </div>
+                  <div className="pe-ai-gauge-effect" />
+                </div>
+                <button
+                  type="button"
+                  onClick={runAiAnalysis}
+                  disabled={aiLoading}
+                  className="pe-ai-run-btn"
+                >
+                  {aiLoading ? (
+                    <>
+                      <span className="pe-spinner" /> Analyzing...
+                    </>
+                  ) : (
+                    'Run AI Diagnostic'
+                  )}
+                </button>
+              </div>
 
-            {(aiAnalysis || profile.aiHealthScore) && (
-              <div className="space-y-5 text-sm">
-                {aiAnalysis?.dietRecommendations?.length > 0 && (
-                  <div className="pe-panel-card">
-                    <h4 className="font-semibold mb-3" style={{ color: '#1dc97f' }}>
-                      Healthy Diet Recommendations
-                    </h4>
-                    <ul className="space-y-2">
-                      {aiAnalysis.dietRecommendations.map((d) => (
-                        <li key={d} className="flex gap-2">
-                          <span className="shrink-0">🥗</span>
-                          <span>{d}</span>
-                        </li>
-                      ))}
-                    </ul>
+              {/* Right Column: Detailed Recommendations/Findings */}
+              <div className="lg:col-span-2 space-y-4">
+                {aiAnalysis ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Diet & Nutrition */}
+                    <div className="pe-ai-subcard pe-ai-subcard--diet">
+                      <h5 className="pe-ai-subcard-title">🥗 Diet & Nutrition</h5>
+                      <ul className="pe-ai-list">
+                        {getDietRecommendations().map((rec, idx) => (
+                          <li key={idx}>{rec}</li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Lifestyle Tips */}
+                    <div className="pe-ai-subcard pe-ai-subcard--lifestyle">
+                      <h5 className="pe-ai-subcard-title">💡 Lifestyle & Sleep</h5>
+                      <ul className="pe-ai-list">
+                        {getLifestyleTips().map((tip, idx) => (
+                          <li key={idx}>{tip}</li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Risk Monitor */}
+                    <div className="pe-ai-subcard pe-ai-subcard--warning">
+                      <h5 className="pe-ai-subcard-title">⚠️ Risk Monitor</h5>
+                      <ul className="pe-ai-list text-yellow-500">
+                        {getRiskAreas().map((risk, idx) => (
+                          <li key={idx}>{risk}</li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Next Checkups */}
+                    <div className="pe-ai-subcard pe-ai-subcard--checkup">
+                      <h5 className="pe-ai-subcard-title">📅 Preventive Plan</h5>
+                      <ul className="pe-ai-list text-emerald-400">
+                        {getNextCheckups().map((chk, idx) => (
+                          <li key={idx}>{chk}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="pe-ai-empty">
+                    <span className="pe-ai-empty-icon">🤖</span>
+                    <p>No active AI Analysis report. Trigger the Diagnostic Engine to generate recommendations.</p>
                   </div>
                 )}
-                {aiAnalysis?.riskAreas?.map((r) => (
-                  <p key={r} style={{ color: '#ef9f27' }}>⚠ {r}</p>
-                ))}
-                {aiAnalysis?.positiveIndicators?.map((p) => (
-                  <p key={p} style={{ color: '#1dc97f' }}>✓ {p}</p>
-                ))}
-                {aiAnalysis?.lifestyleTips?.map((t) => <p key={t}>💡 {t}</p>)}
-                {aiAnalysis?.nextCheckups?.map((c) => (
-                  <p key={c} style={{ color: '#1dc97f' }}>📅 {c}</p>
-                ))}
-                {!aiAnalysis && profile.aiHealthScore && (
-                  <pre className="text-xs whitespace-pre-wrap" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                    {profile.aiHealthScore}
-                  </pre>
-                )}
               </div>
-            )}
+            </div>
           </div>
         )}
       </section>
@@ -649,11 +963,20 @@ export default function ProfilePage() {
             </div>
 
             <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-2">
+              <div>
                 <label>Mobile</label>
                 <input
                   value={editForm.mobile || ''}
                   onChange={(e) => setEditForm({ ...editForm, mobile: e.target.value })}
+                  className="pe-edit-input"
+                />
+              </div>
+              <div>
+                <label>Date of Birth</label>
+                <input
+                  type="date"
+                  value={editForm.birthDate || ''}
+                  onChange={(e) => setEditForm({ ...editForm, birthDate: e.target.value })}
                   className="pe-edit-input"
                 />
               </div>
