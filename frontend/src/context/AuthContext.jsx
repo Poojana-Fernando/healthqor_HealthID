@@ -3,6 +3,20 @@ import { api } from '../api/client'
 
 const AuthContext = createContext(null)
 
+function applyAuthResult(setUser, result) {
+  if (!result?.requiresVerification) {
+    setUser({
+      userId: result.userId,
+      name: result.name,
+      email: result.email,
+      healthId: result.healthId,
+      role: result.role,
+      profileImageUrl: result.profileImageUrl,
+    })
+  }
+  return result
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -25,17 +39,32 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const res = await api.login({ email, password })
-    setUser(res)
+    if (res.requiresVerification) {
+      return res
+    }
+    applyAuthResult(setUser, res)
     await refreshProfile()
     return res
   }
 
   const register = async (data) => {
     const res = await api.register(data)
-    setUser(res)
+    if (res.requiresVerification) {
+      return res
+    }
+    applyAuthResult(setUser, res)
     await refreshProfile()
     return res
   }
+
+  const verifyEmail = useCallback(async (data) => {
+    const res = await api.verifyEmail(data)
+    applyAuthResult(setUser, res)
+    await refreshProfile()
+    return res
+  }, [refreshProfile])
+
+  const resendVerification = useCallback(async (data) => api.resendVerification(data), [])
 
   const googleLogin = async (code, redirectUri) => {
     const res = await api.googleAuth({ code, redirectUri })
@@ -57,7 +86,20 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, login, register, googleLogin, githubLogin, logout, refreshProfile, setProfile }}>
+    <AuthContext.Provider value={{
+      user,
+      profile,
+      loading,
+      login,
+      register,
+      verifyEmail,
+      resendVerification,
+      googleLogin,
+      githubLogin,
+      logout,
+      refreshProfile,
+      setProfile,
+    }}>
       {children}
     </AuthContext.Provider>
   )

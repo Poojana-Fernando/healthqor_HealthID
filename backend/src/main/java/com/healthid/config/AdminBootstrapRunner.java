@@ -89,6 +89,7 @@ public class AdminBootstrapRunner implements ApplicationRunner {
                 .healthId(healthId)
                 .role(Role.ADMIN)
                 .verified(true)
+                .emailVerifiedAt(java.time.Instant.now())
                 .build();
         userRepository.save(admin);
 

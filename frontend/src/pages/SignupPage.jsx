@@ -77,7 +77,7 @@ export default function SignupPage() {
 
     setLoading(true)
     try {
-      await register({
+      const res = await register({
         name: form.name,
         email: form.email,
         password: form.password,
@@ -91,6 +91,16 @@ export default function SignupPage() {
         birthDate: form.birthDate,
         allergies: form.allergies,
       })
+      if (res.requiresVerification) {
+        navigate('/verify-email', {
+          state: {
+            challengeId: res.challengeId,
+            maskedEmail: res.maskedEmail,
+            purpose: res.purpose,
+          },
+        })
+        return
+      }
       navigate('/profile')
     } catch (err) {
       setError(err.message)

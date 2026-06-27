@@ -5,24 +5,27 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
-@Document(collection = "users")
+@Document(collection = "pending_registrations")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class PendingRegistration {
 
     @Id
     private String id;
 
-    private String name;
-
     @Indexed(unique = true)
     private String email;
+
+    private String name;
 
     private String passwordHash;
 
@@ -32,41 +35,31 @@ public class User {
 
     private byte[] nationalId;
 
-    @Indexed(unique = true)
     private String healthId;
 
-    @Builder.Default
-    private Role role = Role.CITIZEN;
+    private Gender gender;
 
-    @Indexed(sparse = true)
-    private String googleSub;
+    private String bloodType;
 
-    @Indexed(sparse = true)
-    private String githubSub;
+    private BigDecimal heightCm;
 
-    private String profileImageUrl;
+    private BigDecimal weightKg;
 
-    @Builder.Default
-    private boolean verified = false;
+    private LocalDate birthDate;
 
-    private Instant emailVerifiedAt;
+    private byte[] allergies;
+
+    @Indexed(expireAfter = "0s")
+    private Instant expiresAt;
 
     private Instant createdAt;
-
-    private Instant updatedAt;
 
     public void prepareForPersist() {
         if (id == null) {
             id = UUID.randomUUID().toString();
         }
-        Instant now = Instant.now();
         if (createdAt == null) {
-            createdAt = now;
+            createdAt = Instant.now();
         }
-        updatedAt = now;
-    }
-
-    public void touchUpdatedAt() {
-        updatedAt = Instant.now();
     }
 }

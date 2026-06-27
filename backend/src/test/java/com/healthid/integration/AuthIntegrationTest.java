@@ -3,6 +3,13 @@ package com.healthid.integration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.healthid.dto.auth.LoginRequest;
 import com.healthid.dto.auth.RegisterRequest;
+import com.healthid.dto.auth.ResendVerificationRequest;
+import com.healthid.dto.auth.VerifyEmailRequest;
+import com.healthid.entity.User;
+import com.healthid.repository.UserRepository;
+import com.healthid.service.email.CapturedEmailStore;
+import com.healthid.service.email.VerificationEmailPayload;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -11,10 +18,14 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -31,11 +42,177 @@ class AuthIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private CapturedEmailStore capturedEmailStore;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @BeforeEach
+    void clearCapturedEmail() {
+        capturedEmailStore.clear();
+    }
+
     @Test
-    void registerAndLoginFlow() throws Exception {
+    void registerRequiresVerificationBeforeUserExists() throws Exception {
+        RegisterRequest register = sampleRegister("verify@healthid.lk");
+
+        MvcResult registerResult = mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(register)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.requiresVerification").value(true))
+                .andExpect(jsonPath("$.challengeId").exists())
+                .andExpect(cookie().doesNotExist("healthid_access_token"))
+                .andReturn();
+
+        assertThat(userRepository.findByEmail("verify@healthid.lk")).isEmpty();
+
+        String challengeId = objectMapper.readTree(registerResult.getResponse().getContentAsString())
+                .get("challengeId").asText();
+        VerificationEmailPayload email = capturedEmailStore.getLast();
+        assertThat(email).isNotNull();
+        assertThat(email.otpCode()).matches("\\d{6}");
+
+        VerifyEmailRequest verify = new VerifyEmailRequest();
+        verify.setChallengeId(challengeId);
+        verify.setCode(email.otpCode());
+
+        mockMvc.perform(post("/api/auth/verify-email")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(verify)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.requiresVerification").value(false))
+                .andExpect(jsonPath("$.healthId").value(org.hamcrest.Matchers.startsWith("HID-LK-1990-")))
+                .andExpect(cookie().exists("healthid_access_token"))
+                .andExpect(cookie().exists("healthid_refresh_token"));
+
+        User user = userRepository.findByEmail("verify@healthid.lk").orElseThrow();
+        assertThat(user.getEmailVerifiedAt()).isNotNull();
+    }
+
+    @Test
+    void loginRequiresReverificationWhenStale() throws Exception {
+        completeRegistration("stale@healthid.lk");
+
+        User user = userRepository.findByEmail("stale@healthid.lk").orElseThrow();
+        user.setEmailVerifiedAt(Instant.now().minus(31, ChronoUnit.DAYS));
+        userRepository.save(user);
+
+        LoginRequest login = new LoginRequest();
+        login.setEmail("stale@healthid.lk");
+        login.setPassword("password123");
+
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(login)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.requiresVerification").value(true))
+                .andExpect(cookie().doesNotExist("healthid_access_token"))
+                .andReturn();
+
+        String challengeId = objectMapper.readTree(loginResult.getResponse().getContentAsString())
+                .get("challengeId").asText();
+        VerificationEmailPayload email = capturedEmailStore.getLast();
+
+        VerifyEmailRequest verify = new VerifyEmailRequest();
+        verify.setChallengeId(challengeId);
+        verify.setCode(email.otpCode());
+
+        mockMvc.perform(post("/api/auth/verify-email")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(verify)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.requiresVerification").value(false))
+                .andExpect(cookie().exists("healthid_access_token"));
+    }
+
+    @Test
+    void magicLinkVerificationWorks() throws Exception {
+        RegisterRequest register = sampleRegister("magic@healthid.lk");
+
+        MvcResult registerResult = mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(register)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String challengeId = objectMapper.readTree(registerResult.getResponse().getContentAsString())
+                .get("challengeId").asText();
+        String magicLink = capturedEmailStore.getLast().magicLinkUrl();
+        String token = magicLink.substring(magicLink.indexOf("token=") + 6);
+
+        VerifyEmailRequest verify = new VerifyEmailRequest();
+        verify.setChallengeId(challengeId);
+        verify.setToken(token);
+
+        mockMvc.perform(post("/api/auth/verify-email")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(verify)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.requiresVerification").value(false))
+                .andExpect(cookie().exists("healthid_access_token"));
+
+        assertThat(userRepository.findByEmail("magic@healthid.lk")).isPresent();
+    }
+
+    @Test
+    void resendVerificationIssuesNewCode() throws Exception {
+        RegisterRequest register = sampleRegister("resend@healthid.lk");
+
+        MvcResult registerResult = mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(register)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String challengeId = objectMapper.readTree(registerResult.getResponse().getContentAsString())
+                .get("challengeId").asText();
+        String firstOtp = capturedEmailStore.getLast().otpCode();
+
+        ResendVerificationRequest resend = new ResendVerificationRequest();
+        resend.setChallengeId(challengeId);
+
+        mockMvc.perform(post("/api/auth/resend-verification")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(resend)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.requiresVerification").value(true));
+
+        String secondOtp = capturedEmailStore.getLast().otpCode();
+        assertThat(secondOtp).isNotEqualTo(firstOtp);
+    }
+
+    @Test
+    void profileRequiresAuth() throws Exception {
+        mockMvc.perform(get("/api/profile/me"))
+                .andExpect(status().isForbidden());
+    }
+
+    private void completeRegistration(String email) throws Exception {
+        RegisterRequest register = sampleRegister(email);
+        MvcResult registerResult = mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(register)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String challengeId = objectMapper.readTree(registerResult.getResponse().getContentAsString())
+                .get("challengeId").asText();
+        VerifyEmailRequest verify = new VerifyEmailRequest();
+        verify.setChallengeId(challengeId);
+        verify.setCode(capturedEmailStore.getLast().otpCode());
+
+        mockMvc.perform(post("/api/auth/verify-email")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(verify)))
+                .andExpect(status().isOk());
+    }
+
+    private RegisterRequest sampleRegister(String email) {
         RegisterRequest register = new RegisterRequest();
         register.setName("Test User");
-        register.setEmail("test@healthid.lk");
+        register.setEmail(email);
         register.setPassword("password123");
         register.setNationalId("199012345678");
         register.setCountry("LK");
@@ -44,29 +221,6 @@ class AuthIntegrationTest {
         register.setHeightCm(BigDecimal.valueOf(175));
         register.setWeightKg(BigDecimal.valueOf(70));
         register.setAllergies(java.util.List.of("seafood"));
-
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(register)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.healthId").value(org.hamcrest.Matchers.startsWith("HID-LK-1990-")))
-                .andExpect(cookie().exists("healthid_access_token"))
-                .andExpect(cookie().exists("healthid_refresh_token"));
-
-        LoginRequest login = new LoginRequest();
-        login.setEmail("test@healthid.lk");
-        login.setPassword("password123");
-
-        mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(login)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email").value("test@healthid.lk"));
-    }
-
-    @Test
-    void profileRequiresAuth() throws Exception {
-        mockMvc.perform(get("/api/profile/me"))
-                .andExpect(status().isForbidden());
+        return register;
     }
 }

@@ -99,6 +99,15 @@ Edit `.env` and set these **required** values:
 | `CACHE_TYPE` | `simple` | Use `simple` locally without Redis |
 | `SPRING_PROFILES_ACTIVE` | `dev` | Dev profile disables Redis requirement |
 | `VITE_API_URL` | *(empty)* | Leave empty — Vite proxies to backend |
+| `BREVO_API_KEY` | — | Brevo API v3 key for sending verification emails (optional in dev — OTP logged to console when unset) |
+| `BREVO_SENDER_EMAIL` | — | Verified sender address in Brevo |
+| `BREVO_SENDER_NAME` | `HealthID` | Sender display name |
+| `EMAIL_REVERIFY_DAYS` | `30` | Password logins require email re-verification after this many days |
+| `EMAIL_OTP_EXPIRY_MINUTES` | `15` | OTP / magic link expiry |
+
+**Email verification (Brevo):** Sign up at [Brevo](https://app.brevo.com), verify a sender email or domain, then create an API v3 key. Without `BREVO_API_KEY`, the backend uses a dev no-op mailer that logs OTP codes to the console.
+
+> **Never commit `.env`** — it is listed in `.gitignore`.
 
 **Google Cloud Console setup:** Create an OAuth 2.0 **Web application** client and add this authorized redirect URI:
 
@@ -113,8 +122,6 @@ http://localhost:5173/auth/github/callback
 ```
 
 For production, add your deployed frontend URLs for both providers.
-
-> **Never commit `.env`** — it is listed in `.gitignore`.
 
 ### 4. Start the backend
 
@@ -170,8 +177,10 @@ CACHE_TYPE=simple
 
 | Method | Endpoint | Access |
 |--------|----------|--------|
-| POST | `/api/auth/register` | Public |
-| POST | `/api/auth/login` | Public |
+| POST | `/api/auth/register` | Public — returns verification challenge; user created after `/verify-email` |
+| POST | `/api/auth/login` | Public — may require email re-verification |
+| POST | `/api/auth/verify-email` | Public — OTP or magic link token |
+| POST | `/api/auth/resend-verification` | Public |
 | POST | `/api/auth/google` | Public |
 | POST | `/api/auth/github` | Public |
 | GET | `/api/profile/me` | Authenticated |

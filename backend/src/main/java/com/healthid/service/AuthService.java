@@ -2,15 +2,19 @@ package com.healthid.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.healthid.dto.auth.AuthResultResponse;
 import com.healthid.dto.auth.AuthResponse;
 import com.healthid.dto.auth.GitHubAuthRequest;
 import com.healthid.dto.auth.GoogleAuthRequest;
 import com.healthid.dto.auth.LoginRequest;
 import com.healthid.dto.auth.RegisterRequest;
+import com.healthid.dto.auth.ResendVerificationRequest;
+import com.healthid.dto.auth.VerifyEmailRequest;
 import com.healthid.entity.Gender;
 import com.healthid.entity.HealthProfile;
 import com.healthid.entity.Role;
 import com.healthid.entity.User;
+import com.healthid.entity.VerificationPurpose;
 import com.healthid.exception.BadRequestException;
 import com.healthid.exception.UnauthorizedException;
 import com.healthid.repository.HealthProfileRepository;
@@ -32,11 +36,9 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class AuthService {
@@ -50,6 +52,7 @@ public class AuthService {
     private final EncryptionService encryptionService;
     private final HealthIdGenerator healthIdGenerator;
     private final AuditLogService auditLogService;
+    private final EmailVerificationService emailVerificationService;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -77,7 +80,8 @@ public class AuthService {
             CustomUserDetailsService userDetailsService,
             EncryptionService encryptionService,
             HealthIdGenerator healthIdGenerator,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            EmailVerificationService emailVerificationService) {
         this.userRepository = userRepository;
         this.healthProfileRepository = healthProfileRepository;
         this.passwordEncoder = passwordEncoder;
@@ -87,55 +91,14 @@ public class AuthService {
         this.encryptionService = encryptionService;
         this.healthIdGenerator = healthIdGenerator;
         this.auditLogService = auditLogService;
+        this.emailVerificationService = emailVerificationService;
     }
 
-    @Transactional
-    public AuthResponse register(RegisterRequest request, HttpServletResponse response) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new BadRequestException("Email already registered");
-        }
-
-        String healthId = healthIdGenerator.generate(request.getCountry(), request.getBirthDate(), request.getNationalId());
-        while (userRepository.existsByHealthId(healthId)) {
-            healthId = healthIdGenerator.generate(request.getCountry(), request.getBirthDate(), request.getNationalId());
-        }
-
-        User user = User.builder()
-                .name(request.getName())
-                .email(request.getEmail())
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .mobile(request.getMobile())
-                .country(request.getCountry())
-                .nationalId(encryptionService.encryptNationalId(request.getNationalId()))
-                .healthId(healthId)
-                .role(Role.CITIZEN)
-                .verified(false)
-                .build();
-        userRepository.save(user);
-
-        BigDecimal bmi = calculateBmi(request.getHeightCm(), request.getWeightKg());
-        String allergies = request.getAllergies() != null
-                ? String.join(",", request.getAllergies())
-                : null;
-
-        HealthProfile profile = HealthProfile.builder()
-                .userId(user.getId())
-                .gender(request.getGender() != null ? request.getGender() : com.healthid.entity.Gender.MALE)
-                .bloodType(request.getBloodType())
-                .heightCm(request.getHeightCm())
-                .weightKg(request.getWeightKg())
-                .bmi(bmi)
-                .birthDate(request.getBirthDate())
-                .allergies(encryptionService.encryptOptional(allergies))
-                .build();
-        healthProfileRepository.save(profile);
-
-        auditLogService.log(user.getId(), "REGISTER", "User", user.getId());
-        setTokenCookies(user, response);
-        return toAuthResponse(user);
+    public AuthResultResponse register(RegisterRequest request, HttpServletResponse response) {
+        return emailVerificationService.startRegistration(request);
     }
 
-    public AuthResponse login(LoginRequest request, HttpServletResponse response) {
+    public AuthResultResponse login(LoginRequest request, HttpServletResponse response) {
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
@@ -144,9 +107,25 @@ public class AuthService {
             throw new UnauthorizedException("Invalid email or password");
         }
         User user = userDetailsService.loadEntityByEmail(request.getEmail());
+        if (emailVerificationService.needsEmailReverification(user)) {
+            return emailVerificationService.startLoginVerification(user);
+        }
         auditLogService.log(user.getId(), "LOGIN", "User", user.getId());
         setTokenCookies(user, response);
-        return toAuthResponse(user);
+        return AuthResultResponse.fromAuth(toAuthResponse(user));
+    }
+
+    public AuthResultResponse verifyEmail(VerifyEmailRequest request, HttpServletResponse response) {
+        VerificationResult result = emailVerificationService.verify(request);
+        if (result.purpose() == VerificationPurpose.LOGIN) {
+            auditLogService.log(result.user().getId(), "LOGIN", "User", result.user().getId());
+        }
+        setTokenCookies(result.user(), response);
+        return AuthResultResponse.fromAuth(toAuthResponse(result.user()));
+    }
+
+    public AuthResultResponse resendVerification(ResendVerificationRequest request) {
+        return emailVerificationService.resend(request);
     }
 
     @Transactional
@@ -231,6 +210,7 @@ public class AuthService {
                 user.setProfileImageUrl(picture);
             }
             user.setName(name);
+            ensureOAuthEmailVerified(user);
             userRepository.save(user);
 
             auditLogService.log(user.getId(), "GOOGLE_LOGIN", "User", user.getId());
@@ -321,6 +301,7 @@ public class AuthService {
                 user.setProfileImageUrl(picture);
             }
             user.setName(name);
+            ensureOAuthEmailVerified(user);
             userRepository.save(user);
 
             auditLogService.log(user.getId(), "GITHUB_LOGIN", "User", user.getId());
@@ -414,6 +395,7 @@ public class AuthService {
                 .profileImageUrl(picture)
                 .role(Role.CITIZEN)
                 .verified(false)
+                .emailVerifiedAt(Instant.now())
                 .build();
         userRepository.save(user);
 
@@ -448,6 +430,7 @@ public class AuthService {
                 .profileImageUrl(picture)
                 .role(Role.CITIZEN)
                 .verified(false)
+                .emailVerifiedAt(Instant.now())
                 .build();
         userRepository.save(user);
 
@@ -499,6 +482,12 @@ public class AuthService {
         response.addCookie(refreshCookie);
     }
 
+    private void ensureOAuthEmailVerified(User user) {
+        if (user.getEmailVerifiedAt() == null) {
+            user.setEmailVerifiedAt(Instant.now());
+        }
+    }
+
     private AuthResponse toAuthResponse(User user) {
         return AuthResponse.builder()
                 .userId(user.getId())
@@ -508,17 +497,5 @@ public class AuthService {
                 .role(user.getRole())
                 .profileImageUrl(user.getProfileImageUrl())
                 .build();
-    }
-
-    private BigDecimal calculateBmi(BigDecimal heightCm, BigDecimal weightKg) {
-        if (heightCm == null || weightKg == null || heightCm.compareTo(BigDecimal.ZERO) <= 0) {
-            return null;
-        }
-        BigDecimal heightM = heightCm.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
-        BigDecimal bmi = weightKg.divide(heightM.multiply(heightM), 2, RoundingMode.HALF_UP);
-        if (bmi.compareTo(BigDecimal.valueOf(999.99)) > 0) {
-            return BigDecimal.valueOf(999.99);
-        }
-        return bmi;
     }
 }

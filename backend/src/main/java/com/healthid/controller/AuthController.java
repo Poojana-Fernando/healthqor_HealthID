@@ -25,14 +25,26 @@ public class AuthController {
 
     @PostMapping("/register")
     @Operation(summary = "Register a new user and generate Health ID")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request, HttpServletResponse response) {
+    public ResponseEntity<AuthResultResponse> register(@Valid @RequestBody RegisterRequest request, HttpServletResponse response) {
         return ResponseEntity.ok(authService.register(request, response));
     }
 
     @PostMapping("/login")
     @Operation(summary = "Login with email and password")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
+    public ResponseEntity<AuthResultResponse> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
         return ResponseEntity.ok(authService.login(request, response));
+    }
+
+    @PostMapping("/verify-email")
+    @Operation(summary = "Verify email with OTP or magic link token")
+    public ResponseEntity<AuthResultResponse> verifyEmail(@Valid @RequestBody VerifyEmailRequest request, HttpServletResponse response) {
+        return ResponseEntity.ok(authService.verifyEmail(request, response));
+    }
+
+    @PostMapping("/resend-verification")
+    @Operation(summary = "Resend verification email for an active challenge")
+    public ResponseEntity<AuthResultResponse> resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
+        return ResponseEntity.ok(authService.resendVerification(request));
     }
 
     @PostMapping("/google")

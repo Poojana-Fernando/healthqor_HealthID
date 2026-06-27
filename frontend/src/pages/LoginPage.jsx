@@ -35,7 +35,17 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      await login(email, password)
+      const res = await login(email, password)
+      if (res.requiresVerification) {
+        navigate('/verify-email', {
+          state: {
+            challengeId: res.challengeId,
+            maskedEmail: res.maskedEmail,
+            purpose: res.purpose,
+          },
+        })
+        return
+      }
       navigate('/profile')
     } catch (err) {
       setError(err.message)

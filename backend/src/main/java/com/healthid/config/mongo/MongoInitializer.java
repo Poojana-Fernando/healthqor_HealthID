@@ -36,6 +36,8 @@ public class MongoInitializer implements ApplicationRunner {
         ensureCollection(database, "doctors", doctorsValidator());
         ensureCollection(database, "appointments", appointmentsValidator());
         ensureCollection(database, "audit_logs", auditLogsValidator());
+        ensureCollection(database, "email_verification_challenges", emailVerificationChallengesValidator());
+        ensureCollection(database, "pending_registrations", pendingRegistrationsValidator());
         log.info("MongoDB collections and validators initialized");
     }
 
@@ -64,6 +66,7 @@ public class MongoInitializer implements ApplicationRunner {
                         .append("healthId", new Document("bsonType", "string"))
                         .append("role", new Document("enum", java.util.List.of("CITIZEN", "DOCTOR", "ADMIN")))
                         .append("verified", new Document("bsonType", "bool"))
+                        .append("emailVerifiedAt", new Document("bsonType", "date"))
                         .append("createdAt", new Document("bsonType", "date"))
                         .append("updatedAt", new Document("bsonType", "date"))));
     }
@@ -130,5 +133,36 @@ public class MongoInitializer implements ApplicationRunner {
                         .append("action", new Document("bsonType", "string"))
                         .append("entityType", new Document("bsonType", "string"))
                         .append("timestamp", new Document("bsonType", "date"))));
+    }
+
+    private Document emailVerificationChallengesValidator() {
+        return new Document("$jsonSchema", new Document()
+                .append("bsonType", "object")
+                .append("required", java.util.List.of("email", "purpose", "otpHash", "magicTokenHash", "expiresAt", "createdAt"))
+                .append("properties", new Document()
+                        .append("email", new Document("bsonType", "string"))
+                        .append("purpose", new Document("enum", java.util.List.of("REGISTER", "LOGIN")))
+                        .append("otpHash", new Document("bsonType", "string"))
+                        .append("magicTokenHash", new Document("bsonType", "string"))
+                        .append("expiresAt", new Document("bsonType", "date"))
+                        .append("attempts", new Document("bsonType", "int"))
+                        .append("maxAttempts", new Document("bsonType", "int"))
+                        .append("consumedAt", new Document("bsonType", "date"))
+                        .append("createdAt", new Document("bsonType", "date"))));
+    }
+
+    private Document pendingRegistrationsValidator() {
+        return new Document("$jsonSchema", new Document()
+                .append("bsonType", "object")
+                .append("required", java.util.List.of("email", "name", "passwordHash", "country", "nationalId", "healthId", "expiresAt", "createdAt"))
+                .append("properties", new Document()
+                        .append("email", new Document("bsonType", "string"))
+                        .append("name", new Document("bsonType", "string"))
+                        .append("passwordHash", new Document("bsonType", "string"))
+                        .append("country", new Document("bsonType", "string"))
+                        .append("nationalId", new Document("bsonType", "binData"))
+                        .append("healthId", new Document("bsonType", "string"))
+                        .append("expiresAt", new Document("bsonType", "date"))
+                        .append("createdAt", new Document("bsonType", "date"))));
     }
 }
