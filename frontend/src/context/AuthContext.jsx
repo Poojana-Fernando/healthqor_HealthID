@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { api } from '../api/client'
+import { api, ensureCsrfCookie } from '../api/client'
 
 const AuthContext = createContext(null)
 
@@ -20,7 +20,9 @@ export function AuthProvider({ children }) {
   }, [])
 
   useEffect(() => {
-    refreshProfile().finally(() => setLoading(false))
+    ensureCsrfCookie()
+      .then(() => refreshProfile())
+      .finally(() => setLoading(false))
   }, [refreshProfile])
 
   const login = async (email, password) => {
@@ -51,7 +53,12 @@ export function AuthProvider({ children }) {
     return res
   }
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await api.logout()
+    } catch {
+      // Clear local state even if server call fails
+    }
     setUser(null)
     setProfile(null)
   }

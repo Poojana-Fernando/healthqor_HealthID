@@ -5,11 +5,14 @@ import { api } from '../api/client'
 export default function EChannelingPage() {
   const { user } = useAuth()
   const [doctors, setDoctors] = useState([])
+  const [appointments, setAppointments] = useState([])
   const [filters, setFilters] = useState({ specialty: '', location: '', available: true, minRating: '' })
   const [selectedDoctor, setSelectedDoctor] = useState(null)
+  const [editingAppointment, setEditingAppointment] = useState(null)
   const [slot, setSlot] = useState('')
   const [notes, setNotes] = useState('')
   const [confirmation, setConfirmation] = useState(null)
+  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   const search = () => {
@@ -21,11 +24,21 @@ export default function EChannelingPage() {
     }).then(setDoctors).catch(() => setDoctors([]))
   }
 
+  const loadAppointments = () => {
+    if (!user) {
+      setAppointments([])
+      return
+    }
+    api.myAppointments().then(setAppointments).catch(() => setAppointments([]))
+  }
+
   useEffect(() => { search() }, [])
+  useEffect(() => { loadAppointments() }, [user])
 
   const book = async () => {
     if (!user || !selectedDoctor || !slot) return
     setLoading(true)
+    setError('')
     try {
       const res = await api.bookAppointment({
         doctorId: selectedDoctor.id,
@@ -34,8 +47,46 @@ export default function EChannelingPage() {
       })
       setConfirmation(res)
       setSelectedDoctor(null)
+      setSlot('')
+      setNotes('')
+      loadAppointments()
     } catch (e) {
-      alert(e.message)
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const cancelAppointment = async (id) => {
+    if (!window.confirm('Cancel this appointment?')) return
+    setError('')
+    try {
+      await api.cancelAppointment(id)
+      loadAppointments()
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
+  const openEdit = (appt) => {
+    setEditingAppointment(appt)
+    setSlot(appt.scheduledAt ? new Date(appt.scheduledAt).toISOString().slice(0, 16) : '')
+    setNotes(appt.notes || '')
+  }
+
+  const saveEdit = async () => {
+    if (!editingAppointment) return
+    setLoading(true)
+    setError('')
+    try {
+      await api.updateAppointment(editingAppointment.id, {
+        scheduledAt: slot ? new Date(slot).toISOString() : undefined,
+        notes: notes || null,
+      })
+      setEditingAppointment(null)
+      loadAppointments()
+    } catch (e) {
+      setError(e.message)
     } finally {
       setLoading(false)
     }
@@ -56,10 +107,21 @@ export default function EChannelingPage() {
     return slots
   }
 
+  const statusClass = (status) => {
+    if (status === 'CONFIRMED') return 'text-green-400'
+    if (status === 'CANCELLED') return 'text-red-400'
+    if (status === 'COMPLETED') return 'text-blue-400'
+    return 'text-yellow-400'
+  }
+
   return (
     <main className="max-w-7xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-2">e-Channeling</h1>
       <p className="opacity-60 mb-8">Book appointments with verified doctors</p>
+
+      {error && (
+        <div className="glass rounded-xl p-4 mb-6 border border-red-500/30 text-red-400 text-sm">{error}</div>
+      )}
 
       {confirmation && (
         <div className="glass rounded-2xl p-6 mb-8 border border-green-500/30">
@@ -68,6 +130,47 @@ export default function EChannelingPage() {
           <p className="text-sm opacity-70">Dr. {confirmation.doctorName} — {confirmation.scheduledAt}</p>
           <button onClick={() => setConfirmation(null)} className="mt-4 text-sm text-accent2">Book another</button>
         </div>
+      )}
+
+      {user && (
+        <section className="mb-10">
+          <h2 className="text-xl font-semibold mb-4">My Appointments</h2>
+          {appointments.length === 0 ? (
+            <p className="opacity-60 text-sm">No appointments yet.</p>
+          ) : (
+            <div className="glass rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left opacity-60">
+                    <th className="p-3">Reference</th>
+                    <th className="p-3">Doctor</th>
+                    <th className="p-3">Scheduled</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {appointments.map((appt) => (
+                    <tr key={appt.id} className="border-b border-border/50">
+                      <td className="p-3 font-mono text-xs">{appt.referenceNumber}</td>
+                      <td className="p-3">{appt.doctorName}</td>
+                      <td className="p-3">{new Date(appt.scheduledAt).toLocaleString()}</td>
+                      <td className={`p-3 ${statusClass(appt.status)}`}>{appt.status}</td>
+                      <td className="p-3">
+                        {appt.status !== 'CANCELLED' && appt.status !== 'COMPLETED' && (
+                          <div className="flex gap-2">
+                            <button onClick={() => openEdit(appt)} className="text-accent2 hover:underline">Edit</button>
+                            <button onClick={() => cancelAppointment(appt.id)} className="text-red-400 hover:underline">Cancel</button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
       )}
 
       <div className="glass rounded-2xl p-4 mb-8 grid sm:grid-cols-4 gap-4">
@@ -140,7 +243,35 @@ export default function EChannelingPage() {
               <button onClick={book} disabled={!user || !slot || loading} className="flex-1 bg-accent py-2 rounded-lg disabled:opacity-50">
                 Confirm Booking
               </button>
-              <button onClick={() => setSelectedDoctor(null)} className="flex-1 border border-border py-2 rounded-lg">Cancel</button>
+              <button onClick={() => setSelectedDoctor(null)} className="flex-1 border border-border py-2 rounded-lg">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingAppointment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setEditingAppointment(null)} />
+          <div className="relative glass rounded-2xl p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Edit Appointment</h2>
+            <label className="text-xs text-accent2 block mb-2">New time</label>
+            <input
+              type="datetime-local"
+              value={slot}
+              onChange={(e) => setSlot(e.target.value)}
+              className="w-full bg-navy/50 border border-border rounded-lg px-3 py-2 mb-4"
+            />
+            <textarea
+              placeholder="Notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="w-full bg-navy/50 border border-border rounded-lg px-3 py-2 mb-4 h-20 text-sm"
+            />
+            <div className="flex gap-3">
+              <button onClick={saveEdit} disabled={loading} className="flex-1 bg-accent py-2 rounded-lg disabled:opacity-50">
+                Save Changes
+              </button>
+              <button onClick={() => setEditingAppointment(null)} className="flex-1 border border-border py-2 rounded-lg">Close</button>
             </div>
           </div>
         </div>

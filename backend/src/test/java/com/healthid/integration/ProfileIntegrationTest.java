@@ -19,6 +19,7 @@ import java.time.LocalDate;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -37,12 +38,14 @@ class ProfileIntegrationTest {
     private JwtUtil jwtUtil;
 
     private String accessToken;
+    private String uniqueEmail;
 
     @BeforeEach
     void setUp() throws Exception {
+        uniqueEmail = "profile-" + System.nanoTime() + "@healthid.lk";
         RegisterRequest register = new RegisterRequest();
         register.setName("Profile User");
-        register.setEmail("profile@healthid.lk");
+        register.setEmail(uniqueEmail);
         register.setPassword("password123");
         register.setNationalId("199098765432");
         register.setCountry("LK");
@@ -59,7 +62,7 @@ class ProfileIntegrationTest {
                 .getContentAsString();
 
         String userId = objectMapper.readTree(response).get("userId").asText();
-        accessToken = jwtUtil.generateAccessToken(userId, "profile@healthid.lk", Role.CITIZEN);
+        accessToken = jwtUtil.generateAccessToken(userId, uniqueEmail, Role.CITIZEN);
     }
 
     @Test
@@ -69,5 +72,16 @@ class ProfileIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.healthId").value(org.hamcrest.Matchers.startsWith("HID-LK-1990-")))
                 .andExpect(jsonPath("$.name").value("Profile User"));
+    }
+
+    @Test
+    void invalidProfileUpdateReturnsFieldErrors() throws Exception {
+        String body = "{\"name\":\"\"}";
+        mockMvc.perform(put("/api/profile/me")
+                        .cookie(new jakarta.servlet.http.Cookie(JwtFilter.ACCESS_TOKEN_COOKIE, accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.name").exists());
     }
 }

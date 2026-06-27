@@ -18,5 +18,6 @@ public class AppointmentResponse {
     private String hospital;
     private Instant scheduledAt;
     private AppointmentStatus status;
+    private String notes;
     private Instant createdAt;
 }

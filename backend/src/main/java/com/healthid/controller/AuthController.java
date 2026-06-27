@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -52,6 +53,15 @@ public class AuthController {
     public ResponseEntity<AuthResponse> refresh(HttpServletRequest request, HttpServletResponse response) {
         String refreshToken = extractCookie(request, JwtFilter.REFRESH_TOKEN_COOKIE);
         return ResponseEntity.ok(authService.refresh(refreshToken, response));
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Sign out and clear auth cookies")
+    public ResponseEntity<Void> logout(
+            @AuthenticationPrincipal String email,
+            HttpServletResponse response) {
+        authService.logout(email, response);
+        return ResponseEntity.noContent().build();
     }
 
     private String extractCookie(HttpServletRequest request, String name) {

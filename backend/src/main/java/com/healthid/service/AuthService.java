@@ -15,10 +15,10 @@ import com.healthid.exception.BadRequestException;
 import com.healthid.exception.UnauthorizedException;
 import com.healthid.repository.HealthProfileRepository;
 import com.healthid.repository.UserRepository;
+import com.healthid.security.CookieHelper;
 import com.healthid.security.CustomUserDetailsService;
 import com.healthid.security.JwtUtil;
 import io.jsonwebtoken.Claims;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -50,6 +50,7 @@ public class AuthService {
     private final EncryptionService encryptionService;
     private final HealthIdGenerator healthIdGenerator;
     private final AuditLogService auditLogService;
+    private final CookieHelper cookieHelper;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -77,7 +78,8 @@ public class AuthService {
             CustomUserDetailsService userDetailsService,
             EncryptionService encryptionService,
             HealthIdGenerator healthIdGenerator,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            CookieHelper cookieHelper) {
         this.userRepository = userRepository;
         this.healthProfileRepository = healthProfileRepository;
         this.passwordEncoder = passwordEncoder;
@@ -87,6 +89,7 @@ public class AuthService {
         this.encryptionService = encryptionService;
         this.healthIdGenerator = healthIdGenerator;
         this.auditLogService = auditLogService;
+        this.cookieHelper = cookieHelper;
     }
 
     @Transactional
@@ -462,6 +465,14 @@ public class AuthService {
         return user;
     }
 
+    public void logout(String email, HttpServletResponse response) {
+        if (email != null) {
+            userRepository.findByEmail(email).ifPresent(user ->
+                    auditLogService.log(user.getId(), "LOGOUT", "User", user.getId()));
+        }
+        cookieHelper.clearAuthCookies(response);
+    }
+
     public AuthResponse refresh(String refreshToken, HttpServletResponse response) {
         try {
             Claims claims = jwtUtil.parseClaims(refreshToken);
@@ -482,21 +493,7 @@ public class AuthService {
     private void setTokenCookies(User user, HttpServletResponse response) {
         String accessToken = jwtUtil.generateAccessToken(user.getId(), user.getEmail(), user.getRole());
         String refreshToken = jwtUtil.generateRefreshToken(user.getId(), user.getEmail(), user.getRole());
-
-        Cookie accessCookie = new Cookie(com.healthid.security.JwtFilter.ACCESS_TOKEN_COOKIE, accessToken);
-        accessCookie.setHttpOnly(true);
-        accessCookie.setSecure(false);
-        accessCookie.setPath("/");
-        accessCookie.setMaxAge(15 * 60);
-
-        Cookie refreshCookie = new Cookie(com.healthid.security.JwtFilter.REFRESH_TOKEN_COOKIE, refreshToken);
-        refreshCookie.setHttpOnly(true);
-        refreshCookie.setSecure(false);
-        refreshCookie.setPath("/");
-        refreshCookie.setMaxAge(7 * 24 * 60 * 60);
-
-        response.addCookie(accessCookie);
-        response.addCookie(refreshCookie);
+        cookieHelper.setAuthCookies(response, accessToken, refreshToken);
     }
 
     private AuthResponse toAuthResponse(User user) {

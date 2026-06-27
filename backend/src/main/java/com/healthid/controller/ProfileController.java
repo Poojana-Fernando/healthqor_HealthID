@@ -5,6 +5,7 @@ import com.healthid.dto.profile.UpdateProfileRequest;
 import com.healthid.service.ProfileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -30,7 +31,7 @@ public class ProfileController {
     @Operation(summary = "Update authenticated user's profile")
     public ResponseEntity<ProfileResponse> updateMyProfile(
             @AuthenticationPrincipal String email,
-            @RequestBody UpdateProfileRequest request) {
+            @Valid @RequestBody UpdateProfileRequest request) {
         return ResponseEntity.ok(profileService.updateProfile(email, request));
     }
 }

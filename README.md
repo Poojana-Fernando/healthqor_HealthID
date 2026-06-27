@@ -100,6 +100,7 @@ Edit `.env` and set these **required** values:
 | `FRONTEND_ORIGIN` | `http://localhost:5173` | CORS origin |
 | `CACHE_TYPE` | `simple` | Use `simple` locally without Redis |
 | `SPRING_PROFILES_ACTIVE` | `dev` | Dev profile disables Redis requirement |
+| `DB_USE_H2` | `false` | Set `true` to use embedded H2 file DB (no MySQL required) |
 | `VITE_API_URL` | *(empty)* | Leave empty — Vite proxies to backend |
 
 **Google Cloud Console setup:** Create an OAuth 2.0 **Web application** client and add this authorized redirect URI:
@@ -157,14 +158,50 @@ npm run dev
 | Profile | Use case |
 |---------|----------|
 | `dev` | Local development — in-memory cache, no Redis required |
-| `prod` | Production — disables Swagger UI |
+| `h2` | Local H2 file database (`DB_USE_H2=true` in `.env`) — auto-seeds demo users |
+| `prod` | Production — `Secure` cookies, Swagger disabled |
 
 Set in `.env`:
 
 ```
 SPRING_PROFILES_ACTIVE=dev
 CACHE_TYPE=simple
+DB_USE_H2=true
 ```
+
+When `DB_USE_H2=true`, `backend/run.ps1` activates the `h2` profile automatically. Delete `backend/data/` to reset the local H2 database after schema changes.
+
+### IntelliJ IDEA
+
+1. **File → Open** → select the `backend` folder (Maven project).
+2. Copy `.env.example` to the repo root `.env` and fill required values.
+3. **Run → Edit Configurations** → add Spring Boot → main class `com.healthid.HealthIdApplication`.
+4. Set **Active profiles**: `h2` (or `dev` with MySQL).
+5. Optionally add **Environment variables** from `.env`, or run via `backend/run.ps1` which loads them.
+6. Run `HealthIdApplication`; API at http://localhost:8080.
+7. Open `frontend` in a terminal: `npm install && npm run dev`.
+
+### Demo seed accounts (H2 / dev profile)
+
+When `app.seed.enabled=true` (default on `h2` profile), these accounts are created on first startup:
+
+| Email | Password | Role |
+|-------|----------|------|
+| `admin@healthid.test` | `Password123!` | ADMIN |
+| `patient@healthid.test` | `Password123!` | CITIZEN |
+| `doctor@healthid.test` | `Password123!` | DOCTOR (verified) |
+| `doctor2@healthid.test` | `Password123!` | DOCTOR (pending) |
+
+### Security model (assignment)
+
+| Topic | Implementation |
+|-------|----------------|
+| Authentication | Email/password + Google + GitHub OAuth |
+| Session | JWT stored in **HttpOnly cookies** (`healthid_access_token`, `healthid_refresh_token`) |
+| CSRF | `CookieCsrfTokenRepository` — SPA sends `X-XSRF-TOKEN` header on mutating requests |
+| Logout | `POST /api/auth/logout` clears auth cookies |
+| Production cookies | `app.cookie.secure=true`, `SameSite=Lax` via `prod` profile |
+| Validation | Bean Validation on DTOs; field errors returned as `{ errors: { field: message } }` |
 
 ---
 
@@ -174,6 +211,7 @@ CACHE_TYPE=simple
 |--------|----------|--------|
 | POST | `/api/auth/register` | Public |
 | POST | `/api/auth/login` | Public |
+| POST | `/api/auth/logout` | Authenticated (clears cookies) |
 | POST | `/api/auth/google` | Public |
 | POST | `/api/auth/github` | Public |
 | GET | `/api/profile/me` | Authenticated |
@@ -182,7 +220,36 @@ CACHE_TYPE=simple
 | POST | `/api/ai/health-analysis` | Authenticated |
 | GET | `/api/doctors/nearby` | Public |
 | POST | `/api/appointments` | Authenticated |
-| GET | `/api/admin/users` | Admin |
+| GET | `/api/appointments/mine` | Authenticated |
+| GET | `/api/appointments/{id}` | Authenticated (owner) |
+| PUT | `/api/appointments/{id}` | Authenticated (owner) |
+| DELETE | `/api/appointments/{id}` | Authenticated (owner, cancel) |
+| GET | `/api/admin/users` | Admin (paginated) |
+| GET | `/api/admin/audit-logs` | Admin (paginated) |
+
+---
+
+## Assignment checklist
+
+| Requirement | Where |
+|-------------|-------|
+| Register / login | `AuthController`, `LoginPage`, `SignupPage` |
+| Logout | `POST /api/auth/logout`, `AuthContext.logout` |
+| CSRF protection | `SecurityConfig`, `frontend/src/api/client.js` |
+| Cookie session | `CookieHelper`, `JwtFilter`, `AuthService` |
+| Full CRUD (appointments) | `ChannelingController`, `EChannelingPage` |
+| Pagination + sort | `AdminController`, `AdminPage` |
+| Validation | `UpdateProfileRequest`, `GlobalExceptionHandler` |
+| Seed data | `DataSeeder`, `V4__seed_and_oauth_indexes.sql` |
+| Integration tests | `backend/src/test/java/com/healthid/integration/` |
+| Postman collection | `docs/postman/HealthID.postman_collection.json` |
+
+### Postman
+
+1. Import `docs/postman/HealthID.postman_collection.json` and `docs/postman/HealthID-local.postman_environment.json`.
+2. Enable **cookie jar** in Postman settings.
+3. Run **Login** first, then copy `XSRF-TOKEN` cookie value to the `xsrfToken` environment variable for mutating requests.
+4. Run the Appointments folder for full CRUD.
 
 ---
 
@@ -191,9 +258,11 @@ CACHE_TYPE=simple
 ```bash
 cd backend
 mvn test
+# Windows without Maven on PATH:
+.\mvnw.cmd test
 ```
 
-Integration tests use H2 in-memory with `create-drop` DDL.
+Integration tests use H2 in-memory with `create-drop` DDL. Eight tests cover auth/logout, profile validation, appointment CRUD, and admin access control.
 
 ---
 
