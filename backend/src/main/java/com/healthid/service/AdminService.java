@@ -46,8 +46,7 @@ public class AdminService {
     public Page<AdminUserResponse> listUsers(String search, Pageable pageable) {
         Page<User> users;
         if (search != null && !search.isBlank()) {
-            users = userRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrHealthIdContainingIgnoreCase(
-                    search, search, search, pageable);
+            users = userRepository.searchUsers(search, pageable);
         } else {
             users = userRepository.findAll(pageable);
         }

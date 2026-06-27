@@ -1,2 +1,0 @@
-ALTER TABLE health_profiles
-    ADD COLUMN gender ENUM('MALE', 'FEMALE') NOT NULL DEFAULT 'MALE';

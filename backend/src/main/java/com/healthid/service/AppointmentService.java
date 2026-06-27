@@ -22,16 +22,19 @@ public class AppointmentService {
     private final DoctorRepository doctorRepository;
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
+    private final EncryptionService encryptionService;
 
     public AppointmentService(
             AppointmentRepository appointmentRepository,
             DoctorRepository doctorRepository,
             UserRepository userRepository,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            EncryptionService encryptionService) {
         this.appointmentRepository = appointmentRepository;
         this.doctorRepository = doctorRepository;
         this.userRepository = userRepository;
         this.auditLogService = auditLogService;
+        this.encryptionService = encryptionService;
     }
 
     @Transactional
@@ -46,7 +49,7 @@ public class AppointmentService {
                 .doctorId(doctor.getId())
                 .scheduledAt(request.getScheduledAt())
                 .status(AppointmentStatus.PENDING)
-                .notes(request.getNotes())
+                .notes(encryptionService.encryptOptional(request.getNotes()))
                 .build();
         appointmentRepository.save(appointment);
 

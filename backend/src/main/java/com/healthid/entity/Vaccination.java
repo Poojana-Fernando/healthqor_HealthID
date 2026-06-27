@@ -1,13 +1,14 @@
 package com.healthid.entity;
 
-import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDate;
 import java.util.UUID;
 
-@Entity
-@Table(name = "vaccinations")
+@Document(collection = "vaccinations")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -16,33 +17,25 @@ import java.util.UUID;
 public class Vaccination {
 
     @Id
-    @Column(columnDefinition = "CHAR(36)")
     private String id;
 
-    @Column(name = "user_id", nullable = false, columnDefinition = "CHAR(36)")
+    @Indexed
     private String userId;
 
-    @Column(name = "vaccine_name", nullable = false)
     private String vaccineName;
 
-    @Column(name = "dose_number", nullable = false)
     @Builder.Default
     private int doseNumber = 1;
 
-    @Column(name = "date_administered", nullable = false)
     private LocalDate dateAdministered;
 
-    @Column(name = "next_due_date")
     private LocalDate nextDueDate;
 
-    @Column(name = "administered_by")
     private String administeredBy;
 
-    @Column(name = "certificate_url")
     private String certificateUrl;
 
-    @PrePersist
-    void prePersist() {
+    public void prepareForPersist() {
         if (id == null) {
             id = UUID.randomUUID().toString();
         }

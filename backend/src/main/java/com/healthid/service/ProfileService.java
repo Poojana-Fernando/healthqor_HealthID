@@ -24,14 +24,17 @@ public class ProfileService {
     private final UserRepository userRepository;
     private final HealthProfileRepository healthProfileRepository;
     private final AuditLogService auditLogService;
+    private final EncryptionService encryptionService;
 
     public ProfileService(
             UserRepository userRepository,
             HealthProfileRepository healthProfileRepository,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            EncryptionService encryptionService) {
         this.userRepository = userRepository;
         this.healthProfileRepository = healthProfileRepository;
         this.auditLogService = auditLogService;
+        this.encryptionService = encryptionService;
     }
 
     @Transactional(readOnly = true)
@@ -69,7 +72,7 @@ public class ProfileService {
         if (request.getEyesightLeft() != null) profile.setEyesightLeft(request.getEyesightLeft());
         if (request.getEyesightRight() != null) profile.setEyesightRight(request.getEyesightRight());
         if (request.getAllergies() != null) {
-            profile.setAllergies(String.join(",", request.getAllergies()));
+            profile.setAllergies(encryptionService.encryptOptional(String.join(",", request.getAllergies())));
         }
 
         profile.setBmi(calculateBmi(profile.getHeightCm(), profile.getWeightKg()));
@@ -100,7 +103,7 @@ public class ProfileService {
                 .birthDate(profile.getBirthDate())
                 .eyesightLeft(profile.getEyesightLeft())
                 .eyesightRight(profile.getEyesightRight())
-                .allergies(parseAllergies(profile.getAllergies()))
+                .allergies(parseAllergies(encryptionService.decryptOptional(profile.getAllergies())))
                 .aiHealthScore(profile.getAiHealthScore())
                 .lastAiAnalysis(profile.getLastAiAnalysis())
                 .build();

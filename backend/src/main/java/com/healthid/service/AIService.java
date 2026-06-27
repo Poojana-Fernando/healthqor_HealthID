@@ -44,6 +44,7 @@ public class AIService {
     private final MedicalHistoryRepository medicalHistoryRepository;
     private final DoctorService doctorService;
     private final AuditLogService auditLogService;
+    private final EncryptionService encryptionService;
 
     @Value("${openai.api.key}")
     private String apiKey;
@@ -60,13 +61,20 @@ public class AIService {
             VaccinationRepository vaccinationRepository,
             MedicalHistoryRepository medicalHistoryRepository,
             DoctorService doctorService,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            EncryptionService encryptionService) {
         this.userRepository = userRepository;
         this.healthProfileRepository = healthProfileRepository;
         this.vaccinationRepository = vaccinationRepository;
         this.medicalHistoryRepository = medicalHistoryRepository;
         this.doctorService = doctorService;
         this.auditLogService = auditLogService;
+        this.encryptionService = encryptionService;
+    }
+
+    private String allergiesText(HealthProfile profile) {
+        String decrypted = encryptionService.decryptOptional(profile.getAllergies());
+        return decrypted != null && !decrypted.isBlank() ? decrypted : null;
     }
 
     public SymptomCheckResponse symptomCheck(String requesterEmail, SymptomCheckRequest request, BigDecimal lat, BigDecimal lng) {
@@ -86,7 +94,8 @@ public class AIService {
             }
             if (hp.getBmi() != null) patientContext.append(" BMI: ").append(hp.getBmi()).append(".");
             if (hp.getBloodType() != null) patientContext.append(" Blood type: ").append(hp.getBloodType()).append(".");
-            if (hp.getAllergies() != null && !hp.getAllergies().isBlank()) patientContext.append(" Allergies: ").append(hp.getAllergies()).append(".");
+            String allergies = allergiesText(hp);
+            if (allergies != null) patientContext.append(" Allergies: ").append(allergies).append(".");
         });
         List<MedicalHistory> conditions = medicalHistoryRepository.findByUserIdOrderByDiagnosedDateDesc(user.getId());
         if (!conditions.isEmpty()) {
@@ -243,7 +252,7 @@ public class AIService {
         return "Gender: " + profile.getGender()
                 + ", BMI: " + profile.getBmi()
                 + ", Blood type: " + profile.getBloodType()
-                + ", Allergies: " + (profile.getAllergies() != null ? profile.getAllergies() : "none");
+                + ", Allergies: " + (allergiesText(profile) != null ? allergiesText(profile) : "none");
     }
 
     private String buildAnonymousProfile(HealthProfile profile, List<Vaccination> vaccinations, List<MedicalHistory> history) {
@@ -253,7 +262,7 @@ public class AIService {
         sb.append("Height (cm): ").append(profile.getHeightCm()).append("\n");
         sb.append("Weight (kg): ").append(profile.getWeightKg()).append("\n");
         sb.append("Blood type: ").append(profile.getBloodType()).append("\n");
-        sb.append("Allergies: ").append(profile.getAllergies() != null ? profile.getAllergies() : "none").append("\n");
+        sb.append("Allergies: ").append(allergiesText(profile) != null ? allergiesText(profile) : "none").append("\n");
         sb.append("Vaccinations: ");
         vaccinations.forEach(v -> sb.append(v.getVaccineName()).append(" (dose ").append(v.getDoseNumber()).append("), "));
         sb.append("\nMedical history: ");

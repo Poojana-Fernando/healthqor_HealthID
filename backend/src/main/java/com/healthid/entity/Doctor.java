@@ -1,13 +1,18 @@
 package com.healthid.entity;
 
-import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.geo.Point;
+import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
+import org.springframework.data.mongodb.core.index.GeoSpatialIndexType;
+import org.springframework.data.mongodb.core.index.GeoSpatialIndexed;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
-@Entity
-@Table(name = "doctors")
+@Document(collection = "doctors")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -16,38 +21,41 @@ import java.util.UUID;
 public class Doctor {
 
     @Id
-    @Column(columnDefinition = "CHAR(36)")
     private String id;
 
-    @Column(name = "user_id", nullable = false, unique = true, columnDefinition = "CHAR(36)")
+    @Indexed(unique = true)
     private String userId;
 
-    @Column(nullable = false)
+    @Indexed
     private String specialization;
 
     private String hospital;
 
-    @Column(name = "license_number", nullable = false, length = 100)
     private String licenseNumber;
 
-    @Column(precision = 10, scale = 7)
     private BigDecimal lat;
 
-    @Column(precision = 10, scale = 7)
     private BigDecimal lng;
 
-    @Column(name = "avg_rating", precision = 3, scale = 2)
+    @GeoSpatialIndexed(type = GeoSpatialIndexType.GEO_2DSPHERE)
+    private GeoJsonPoint location;
+
     @Builder.Default
     private BigDecimal avgRating = BigDecimal.ZERO;
 
-    @Column(name = "is_available", nullable = false)
     @Builder.Default
     private boolean available = true;
 
-    @PrePersist
-    void prePersist() {
+    public void prepareForPersist() {
         if (id == null) {
             id = UUID.randomUUID().toString();
+        }
+        syncLocation();
+    }
+
+    public void syncLocation() {
+        if (lat != null && lng != null) {
+            location = new GeoJsonPoint(new Point(lng.doubleValue(), lat.doubleValue()));
         }
     }
 }

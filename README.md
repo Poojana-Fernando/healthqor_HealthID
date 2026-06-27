@@ -2,7 +2,7 @@
 
 Digital Health Identity platform for Sri Lanka — encrypted health records, AI symptom triage & diet analysis, 3D profile viewer, e-Channeling, and admin tooling.
 
-**Stack:** Spring Boot 3 · React 18 · MySQL 8 · Redis · OpenAI · Three.js
+**Stack:** Spring Boot 3 · React 18 · MongoDB · Redis · OpenAI · Three.js
 
 ---
 
@@ -42,7 +42,7 @@ healthid/
 | Java | 21+ (25 supported with Lombok 1.18.40+) |
 | Maven | 3.9+ |
 | Node.js | 18+ |
-| MySQL | 8 |
+| MongoDB | 6+ (Atlas cluster or self-hosted replica set) |
 | Redis | Optional for local dev |
 
 ---
@@ -62,14 +62,9 @@ cd healthqor_HealthID
 > git clone https://github.com/Poojana-Fernando/healthqor_HealthID.git
 > ```
 
-### 2. Create the database
+### 2. Configure MongoDB
 
-```sql
-CREATE DATABASE healthid_db;
-CREATE USER 'healthid_user'@'localhost' IDENTIFIED BY 'your_strong_password';
-GRANT ALL PRIVILEGES ON healthid_db.* TO 'healthid_user'@'localhost';
-FLUSH PRIVILEGES;
-```
+Create a database on your MongoDB cluster (e.g. `healthid`) and obtain a connection URI. A **replica set** is required for multi-document transactions (standard on MongoDB Atlas).
 
 ### 3. Configure environment
 
@@ -81,8 +76,7 @@ Edit `.env` and set these **required** values:
 
 | Variable | Description |
 |----------|-------------|
-| `DB_USER` | MySQL username |
-| `DB_PASSWORD` | MySQL password |
+| `MONGODB_URI` | MongoDB connection string (e.g. `mongodb+srv://...`) |
 | `HEALTHID_ENCRYPTION_KEY` | 64-char hex string (32 bytes) — `openssl rand -hex 32` |
 | `JWT_SECRET` | Long random string for signing tokens |
 | `OPENAI_API_KEY` | OpenAI API key for AI features |
@@ -91,6 +85,10 @@ Edit `.env` and set these **required** values:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `MONGODB_DATABASE` | `healthid` | Database name |
+| `ADMIN_EMAIL` | — | First-run admin bootstrap email (only when no ADMIN exists) |
+| `ADMIN_PASSWORD` | — | First-run admin bootstrap password |
+| `ADMIN_NAME` | `System Admin` | Display name for bootstrapped admin |
 | `GOOGLE_CLIENT_ID` | — | Google OAuth client ID (Web application) |
 | `GOOGLE_CLIENT_SECRET` | — | Google OAuth client secret |
 | `VITE_GOOGLE_CLIENT_ID` | — | Same client ID as `GOOGLE_CLIENT_ID` (loaded from root `.env` by Vite) |
@@ -138,7 +136,7 @@ mvn spring-boot:run
 - API: http://localhost:8080  
 - Swagger UI: http://localhost:8080/swagger-ui.html
 
-Flyway runs migrations automatically on first start.
+On first start, `MongoInitializer` creates collections with JSON Schema validators and indexes. If no `ADMIN` user exists and `ADMIN_EMAIL`/`ADMIN_PASSWORD` are set, an admin account is bootstrapped automatically.
 
 ### 5. Start the frontend
 
@@ -193,21 +191,7 @@ cd backend
 mvn test
 ```
 
-Integration tests use H2 in-memory with `create-drop` DDL.
-
----
-
-## PostgreSQL migration
-
-Update `backend/src/main/resources/application.properties` and the JDBC driver in `pom.xml`:
-
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/healthid_db
-spring.datasource.driver-class-name=org.postgresql.Driver
-spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
-```
-
-Repository interfaces require no code changes.
+Integration tests use Testcontainers with MongoDB 7. Docker must be running for `mvn test`.
 
 ---
 
@@ -217,7 +201,7 @@ Repository interfaces require no code changes.
 |-------|-----|
 | `mvn` not found (Windows) | Use `backend\mvn.cmd` instead |
 | Port 8080 in use | Stop the existing Java process or change server port |
-| MySQL access denied | Verify `DB_USER` / `DB_PASSWORD` in `.env` |
+| MongoDB connection failed | Verify `MONGODB_URI` in `.env` and cluster IP allowlist (Atlas) |
 | Redis connection errors | Set `CACHE_TYPE=simple` and `SPRING_PROFILES_ACTIVE=dev` |
 | AI returns fallback data | Check `OPENAI_API_KEY` is set and backend was restarted |
 | Frontend can't reach API | Ensure backend is on port 8080; leave `VITE_API_URL` empty for dev proxy |

@@ -126,7 +126,7 @@ public class AuthService {
                 .weightKg(request.getWeightKg())
                 .bmi(bmi)
                 .birthDate(request.getBirthDate())
-                .allergies(allergies)
+                .allergies(encryptionService.encryptOptional(allergies))
                 .build();
         healthProfileRepository.save(profile);
 
