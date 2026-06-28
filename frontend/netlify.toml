@@ -1,7 +1,6 @@
-# Repo-root config (used when Netlify "Base directory" is left empty)
+# Used when Netlify "Base directory" is set to: frontend
 
 [build]
-  base = "frontend"
   command = "npm install && npm run build"
   publish = "dist"
 
