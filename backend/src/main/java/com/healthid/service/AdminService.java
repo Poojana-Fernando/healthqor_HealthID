@@ -7,8 +7,12 @@ import com.healthid.exception.BadRequestException;
 import com.healthid.exception.ResourceNotFoundException;
 import com.healthid.repository.AppointmentRepository;
 import com.healthid.repository.DoctorRepository;
+import com.healthid.repository.EmailVerificationChallengeRepository;
 import com.healthid.repository.HealthProfileRepository;
+import com.healthid.repository.MedicalHistoryRepository;
+import com.healthid.repository.PhoneVerificationChallengeRepository;
 import com.healthid.repository.UserRepository;
+import com.healthid.repository.VaccinationRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -30,8 +34,12 @@ public class AdminService {
     private final DoctorRepository doctorRepository;
     private final HealthProfileRepository healthProfileRepository;
     private final AppointmentRepository appointmentRepository;
+    private final VaccinationRepository vaccinationRepository;
+    private final MedicalHistoryRepository medicalHistoryRepository;
+    private final EmailVerificationChallengeRepository emailVerificationChallengeRepository;
+    private final PhoneVerificationChallengeRepository phoneVerificationChallengeRepository;
     private final AuditLogService auditLogService;
-    private final PasswordResetService passwordResetService;
+    private final DoctorInvitationService doctorInvitationService;
     private final PasswordEncoder passwordEncoder;
     private final EncryptionService encryptionService;
     private final HealthIdGenerator healthIdGenerator;
@@ -41,8 +49,12 @@ public class AdminService {
             DoctorRepository doctorRepository,
             HealthProfileRepository healthProfileRepository,
             AppointmentRepository appointmentRepository,
+            VaccinationRepository vaccinationRepository,
+            MedicalHistoryRepository medicalHistoryRepository,
+            EmailVerificationChallengeRepository emailVerificationChallengeRepository,
+            PhoneVerificationChallengeRepository phoneVerificationChallengeRepository,
             AuditLogService auditLogService,
-            PasswordResetService passwordResetService,
+            DoctorInvitationService doctorInvitationService,
             PasswordEncoder passwordEncoder,
             EncryptionService encryptionService,
             HealthIdGenerator healthIdGenerator) {
@@ -50,8 +62,12 @@ public class AdminService {
         this.doctorRepository = doctorRepository;
         this.healthProfileRepository = healthProfileRepository;
         this.appointmentRepository = appointmentRepository;
+        this.vaccinationRepository = vaccinationRepository;
+        this.medicalHistoryRepository = medicalHistoryRepository;
+        this.emailVerificationChallengeRepository = emailVerificationChallengeRepository;
+        this.phoneVerificationChallengeRepository = phoneVerificationChallengeRepository;
         this.auditLogService = auditLogService;
-        this.passwordResetService = passwordResetService;
+        this.doctorInvitationService = doctorInvitationService;
         this.passwordEncoder = passwordEncoder;
         this.encryptionService = encryptionService;
         this.healthIdGenerator = healthIdGenerator;
@@ -156,7 +172,7 @@ public class AdminService {
                 .build();
         doctorRepository.save(doctor);
 
-        passwordResetService.requestReset(user.getEmail());
+        doctorInvitationService.sendInvitation(user);
         auditLogService.log(null, "CREATE_DOCTOR", "Doctor", doctor.getId());
 
         return mapDoctor(doctor);
@@ -265,6 +281,24 @@ public class AdminService {
                 .orElseThrow(() -> new ResourceNotFoundException("Patient not found"));
         return appointmentRepository.findByPatientIdOrderByScheduledAtDesc(user.getId(), pageable)
                 .map(this::mapAppointment);
+    }
+
+    @Transactional
+    public void deletePatient(String patientId) {
+        User user = userRepository.findById(patientId)
+                .filter(u -> u.getRole() == Role.CITIZEN)
+                .orElseThrow(() -> new ResourceNotFoundException("Patient not found"));
+
+        appointmentRepository.deleteByPatientId(user.getId());
+        vaccinationRepository.deleteByUserId(user.getId());
+        medicalHistoryRepository.deleteByUserId(user.getId());
+        healthProfileRepository.deleteByUserId(user.getId());
+        phoneVerificationChallengeRepository.deleteByUserId(user.getId());
+        emailVerificationChallengeRepository.deleteByEmail(user.getEmail());
+        emailVerificationChallengeRepository.deleteByUserId(user.getId());
+        userRepository.delete(user);
+
+        auditLogService.log(null, "DELETE_PATIENT", "User", patientId);
     }
 
     @Transactional

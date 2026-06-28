@@ -77,7 +77,8 @@ public class PasswordResetService {
 
         EmailVerificationChallenge challenge = resolveChallenge(request);
 
-        if (challenge.getPurpose() != VerificationPurpose.PASSWORD_RESET) {
+        if (challenge.getPurpose() != VerificationPurpose.PASSWORD_RESET
+                && challenge.getPurpose() != VerificationPurpose.DOCTOR_INVITE) {
             throw new BadRequestException("Invalid or expired reset request");
         }
         if (challenge.getExpiresAt().isBefore(Instant.now())) {
@@ -87,7 +88,8 @@ public class PasswordResetService {
             throw new BadRequestException("Invalid or expired reset request");
         }
 
-        boolean otpValid = request.getCode() != null
+        boolean otpValid = challenge.getPurpose() == VerificationPurpose.PASSWORD_RESET
+                && request.getCode() != null
                 && !request.getCode().isBlank()
                 && VerificationHasher.matches(verificationPepper, request.getCode().trim(), challenge.getOtpHash());
         boolean tokenValid = request.getToken() != null
@@ -113,7 +115,10 @@ public class PasswordResetService {
         challenge.setConsumedAt(Instant.now());
         challengeRepository.save(challenge);
 
-        auditLogService.log(user.getId(), "PASSWORD_RESET", "User", user.getId());
+        auditLogService.log(user.getId(),
+                challenge.getPurpose() == VerificationPurpose.DOCTOR_INVITE
+                        ? "DOCTOR_PASSWORD_SET" : "PASSWORD_RESET",
+                "User", user.getId());
         return ResetPasswordResponse.success();
     }
 

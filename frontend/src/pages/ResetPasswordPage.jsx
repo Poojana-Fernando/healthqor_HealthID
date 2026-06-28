@@ -29,6 +29,7 @@ export default function ResetPasswordPage() {
   const [resending, setResending] = useState(false)
   const [magicLinkMode, setMagicLinkMode] = useState(false)
 
+  const isDoctorInvite = searchParams.get('invite') === '1'
   const strength = passwordStrength(password)
 
   useEffect(() => {
@@ -98,11 +99,15 @@ export default function ResetPasswordPage() {
 
   return (
     <main className="max-w-md mx-auto px-4 py-16">
-      <h1 className="text-3xl font-bold mb-2">Reset password</h1>
+      <h1 className="text-3xl font-bold mb-2">
+        {isDoctorInvite ? 'Set your password' : 'Reset password'}
+      </h1>
       <p className="opacity-70 mb-8">
-        {magicLinkMode
-          ? 'Choose a new password for your account.'
-          : 'Enter the 6-digit code from your email and your new password.'}
+        {isDoctorInvite
+          ? 'Your Health ID doctor account has been created. Choose a password to activate access.'
+          : magicLinkMode
+            ? 'Choose a new password for your account.'
+            : 'Enter the 6-digit code from your email and your new password.'}
       </p>
 
       <form onSubmit={submit} className="space-y-4">
@@ -173,11 +178,11 @@ export default function ResetPasswordPage() {
         {message && <p className="text-emerald-400 text-sm">{message}</p>}
 
         <button type="submit" disabled={loading} className="w-full bg-accent hover:bg-accent2 py-3 rounded-xl disabled:opacity-50">
-          {loading ? 'Updating...' : 'Update password'}
+          {loading ? 'Updating...' : isDoctorInvite ? 'Activate account' : 'Update password'}
         </button>
       </form>
 
-      {!magicLinkMode && (
+      {!magicLinkMode && !isDoctorInvite && (
         <button
           type="button"
           onClick={handleResend}

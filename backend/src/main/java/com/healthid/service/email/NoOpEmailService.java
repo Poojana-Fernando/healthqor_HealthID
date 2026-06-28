@@ -39,4 +39,14 @@ public class NoOpEmailService implements EmailService {
                 payload.magicLinkUrl()
         );
     }
+
+    @Override
+    public void sendDoctorInvitationEmail(DoctorInvitationEmailPayload payload) {
+        capturedEmailStore.captureDoctorInvitation(payload);
+        log.info(
+                "DEV doctor invitation for {}: magicLink={}",
+                payload.toEmail(),
+                payload.magicLinkUrl()
+        );
+    }
 }

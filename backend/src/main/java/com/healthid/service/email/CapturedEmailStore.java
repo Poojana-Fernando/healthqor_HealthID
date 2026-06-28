@@ -9,6 +9,7 @@ public class CapturedEmailStore {
 
     private final AtomicReference<VerificationEmailPayload> lastEmail = new AtomicReference<>();
     private final AtomicReference<PasswordResetEmailPayload> lastPasswordResetEmail = new AtomicReference<>();
+    private final AtomicReference<DoctorInvitationEmailPayload> lastDoctorInvitationEmail = new AtomicReference<>();
 
     public void capture(VerificationEmailPayload payload) {
         lastEmail.set(payload);
@@ -26,8 +27,17 @@ public class CapturedEmailStore {
         return lastPasswordResetEmail.get();
     }
 
+    public void captureDoctorInvitation(DoctorInvitationEmailPayload payload) {
+        lastDoctorInvitationEmail.set(payload);
+    }
+
+    public DoctorInvitationEmailPayload getLastDoctorInvitation() {
+        return lastDoctorInvitationEmail.get();
+    }
+
     public void clear() {
         lastEmail.set(null);
         lastPasswordResetEmail.set(null);
+        lastDoctorInvitationEmail.set(null);
     }
 }

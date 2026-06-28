@@ -35,6 +35,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
@@ -105,6 +106,11 @@ class AdminIntegrationTest {
         mockMvc.perform(get("/api/admin/doctors/" + doctorId).cookie(adminCookie))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.verifiedByAdmin").value(true));
+
+        assertThat(capturedEmailStore.getLastDoctorInvitation()).isNotNull();
+        assertThat(capturedEmailStore.getLastDoctorInvitation().toEmail()).isEqualTo("dr.admin@healthid.lk");
+        assertThat(capturedEmailStore.getLastDoctorInvitation().magicLinkUrl()).contains("invite=1");
+        assertThat(capturedEmailStore.getLastPasswordReset()).isNull();
     }
 
     @Test
@@ -144,6 +150,26 @@ class AdminIntegrationTest {
                         .cookie(adminCookie))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
+    }
+
+    @Test
+    void adminCanDeletePatient() throws Exception {
+        registerAndVerifyPatient("delete.me@healthid.lk");
+
+        User patient = userRepository.findByEmail("delete.me@healthid.lk").orElseThrow();
+
+        mockMvc.perform(get("/api/admin/patients/" + patient.getId()).cookie(adminCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("delete.me@healthid.lk"));
+
+        mockMvc.perform(delete("/api/admin/patients/" + patient.getId()).cookie(adminCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("deleted"));
+
+        mockMvc.perform(get("/api/admin/patients/" + patient.getId()).cookie(adminCookie))
+                .andExpect(status().isNotFound());
+
+        assertThat(userRepository.findById(patient.getId())).isEmpty();
     }
 
     @Test

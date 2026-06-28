@@ -15,5 +15,7 @@ public interface PhoneVerificationChallengeRepository extends MongoRepository<Ph
 
     void deleteByUserIdAndConsumedAtIsNull(String userId);
 
+    void deleteByUserId(String userId);
+
     long countByUserIdAndCreatedAtAfter(String userId, Instant since);
 }

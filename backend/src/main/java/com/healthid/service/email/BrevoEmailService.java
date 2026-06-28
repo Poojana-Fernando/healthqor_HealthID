@@ -52,6 +52,16 @@ public class BrevoEmailService implements EmailService {
         );
     }
 
+    @Override
+    public void sendDoctorInvitationEmail(DoctorInvitationEmailPayload payload) {
+        sendTransactionalEmail(
+                payload.toEmail(),
+                "You've been invited to Health ID as a doctor",
+                buildDoctorInviteHtml(payload),
+                buildDoctorInviteText(payload)
+        );
+    }
+
     private void validateConfig() {
         if (apiKey == null || apiKey.isBlank()) {
             throw new BadRequestException("Brevo API key is not configured");
@@ -143,5 +153,32 @@ public class BrevoEmailService implements EmailService {
 
                 Expires in %d minutes.
                 """.formatted(payload.otpCode(), payload.magicLinkUrl(), payload.expiryMinutes());
+    }
+
+    private String buildDoctorInviteHtml(DoctorInvitationEmailPayload payload) {
+        String greeting = payload.doctorName() != null && !payload.doctorName().isBlank()
+                ? "Hello " + payload.doctorName() + ","
+                : "Hello,";
+        return """
+                <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;">
+                  <h2 style="color:#0ea5e9;">Welcome to Health ID</h2>
+                  <p>%s</p>
+                  <p>Your administrator has created a doctor account for you on the Health ID platform. Click the button below to set your password and activate your account.</p>
+                  <p><a href="%s" style="background:#0ea5e9;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Set Your Password</a></p>
+                  <p style="color:#666;font-size:13px;">This link expires in %d minutes. If you did not expect this invitation, you can ignore this email.</p>
+                </div>
+                """.formatted(greeting, payload.magicLinkUrl(), payload.expiryMinutes());
+    }
+
+    private String buildDoctorInviteText(DoctorInvitationEmailPayload payload) {
+        return """
+                Welcome to Health ID
+
+                Your administrator has created a doctor account for you. Set your password by opening this link:
+
+                %s
+
+                This link expires in %d minutes.
+                """.formatted(payload.magicLinkUrl(), payload.expiryMinutes());
     }
 }

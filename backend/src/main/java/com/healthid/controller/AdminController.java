@@ -108,6 +108,13 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getPatient(id));
     }
 
+    @DeleteMapping("/patients/{id}")
+    @Operation(summary = "Permanently delete a patient and all related data")
+    public ResponseEntity<Map<String, String>> deletePatient(@PathVariable String id) {
+        adminService.deletePatient(id);
+        return ResponseEntity.ok(Map.of("status", "deleted"));
+    }
+
     @GetMapping("/patients/{id}/appointments")
     @Operation(summary = "Paginated appointments for a patient")
     public ResponseEntity<Page<AppointmentResponse>> patientAppointments(

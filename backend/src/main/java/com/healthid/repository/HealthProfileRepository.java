@@ -10,4 +10,6 @@ import java.util.Optional;
 public interface HealthProfileRepository extends MongoRepository<HealthProfile, String> {
 
     Optional<HealthProfile> findByUserId(String userId);
+
+    void deleteByUserId(String userId);
 }

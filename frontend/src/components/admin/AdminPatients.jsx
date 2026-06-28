@@ -11,6 +11,7 @@ export default function AdminPatients() {
   const [selected, setSelected] = useState(null)
   const [appointments, setAppointments] = useState({ content: [] })
   const [cancelling, setCancelling] = useState(null)
+  const [deleting, setDeleting] = useState(null)
 
   const loadPatients = useCallback(async () => {
     setLoading(true)
@@ -54,6 +55,24 @@ export default function AdminPatients() {
     }
   }
 
+  const deletePatient = async (patient) => {
+    const confirmed = window.confirm(
+      `Delete ${patient.name}? This permanently removes all health data and appointments.`
+    )
+    if (!confirmed) return
+
+    setDeleting(patient.id)
+    try {
+      await api.adminDeletePatient(patient.id)
+      if (selected?.id === patient.id) setSelected(null)
+      loadPatients()
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setDeleting(null)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex gap-3">
@@ -94,9 +113,17 @@ export default function AdminPatients() {
                     {p.mobile ? ` ${p.mobile.slice(-4).padStart(p.mobile.length, '•')}` : ''}
                   </td>
                   <td className="p-3 text-xs">{p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '—'}</td>
-                  <td className="p-3">
+                  <td className="p-3 space-x-3">
                     <button type="button" className="text-accent2 hover:text-accent text-xs" onClick={() => openDetail(p)}>
                       View
+                    </button>
+                    <button
+                      type="button"
+                      className="text-red-400 hover:text-red-300 text-xs"
+                      disabled={deleting === p.id}
+                      onClick={() => deletePatient(p)}
+                    >
+                      {deleting === p.id ? 'Deleting...' : 'Delete'}
                     </button>
                   </td>
                 </tr>
@@ -129,6 +156,21 @@ export default function AdminPatients() {
                   <p><span className="opacity-60">Birth date:</span> {selected.healthSummary.birthDate || '—'}</p>
                 </>
               )}
+            </div>
+            <div className="mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                className="text-red-400 border-red-400/30 hover:bg-red-400/10"
+                disabled={deleting === selected.id}
+                onClick={() => deletePatient(selected)}
+              >
+                {deleting === selected.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  'Delete patient'
+                )}
+              </Button>
             </div>
             <div className="mt-8">
               <h3 className="font-semibold mb-3">Appointments</h3>

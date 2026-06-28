@@ -10,4 +10,6 @@ import java.util.List;
 public interface MedicalHistoryRepository extends MongoRepository<MedicalHistory, String> {
 
     List<MedicalHistory> findByUserIdOrderByDiagnosedDateDesc(String userId);
+
+    void deleteByUserId(String userId);
 }

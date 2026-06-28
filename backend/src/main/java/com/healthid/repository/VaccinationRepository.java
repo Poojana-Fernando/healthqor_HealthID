@@ -10,4 +10,6 @@ import java.util.List;
 public interface VaccinationRepository extends MongoRepository<Vaccination, String> {
 
     List<Vaccination> findByUserIdOrderByDateAdministeredDesc(String userId);
+
+    void deleteByUserId(String userId);
 }

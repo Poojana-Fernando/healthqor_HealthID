@@ -131,6 +131,7 @@ export const api = {
     return request(`/api/admin/patients?${params}`)
   },
   adminPatient: (id) => request(`/api/admin/patients/${id}`),
+  adminDeletePatient: (id) => request(`/api/admin/patients/${id}`, { method: 'DELETE' }),
   adminPatientAppointments: (id, page = 0) =>
     request(`/api/admin/patients/${id}/appointments?page=${page}&size=20`),
   adminCancelAppointment: (id) => request(`/api/admin/appointments/${id}/cancel`, { method: 'POST' }),

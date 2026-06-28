@@ -8,6 +8,10 @@ import SignupPage from './pages/SignupPage'
 import LoginPage from './pages/LoginPage'
 import EChannelingPage from './pages/EChannelingPage'
 import AdminPage from './pages/AdminPage'
+import AdminDashboard from './components/admin/AdminDashboard'
+import AdminDoctors from './components/admin/AdminDoctors'
+import AdminPatients from './components/admin/AdminPatients'
+import AdminAddDoctorPage from './pages/AdminAddDoctorPage'
 import SupportPage from './pages/SupportPage'
 import GoogleCallbackPage from './pages/GoogleCallbackPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
@@ -31,7 +35,12 @@ export default function App() {
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
         <Route path="/echanneling" element={<EChannelingPage />} />
-        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/admin" element={<AdminPage />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="doctors" element={<AdminDoctors />} />
+          <Route path="doctors/new" element={<AdminAddDoctorPage />} />
+          <Route path="patients" element={<AdminPatients />} />
+        </Route>
         <Route path="/support" element={<SupportPage />} />
         </Routes>
       </PhoneVerificationGate>

@@ -16,4 +16,8 @@ public interface EmailVerificationChallengeRepository extends MongoRepository<Em
 
     Optional<EmailVerificationChallenge> findTopByEmailAndPurposeAndConsumedAtIsNullOrderByCreatedAtDesc(
             String email, com.healthid.entity.VerificationPurpose purpose);
+
+    void deleteByEmail(String email);
+
+    void deleteByUserId(String userId);
 }
