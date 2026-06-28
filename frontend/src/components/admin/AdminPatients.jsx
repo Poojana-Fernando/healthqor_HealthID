@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Loader2, X } from 'lucide-react'
+import { X } from 'lucide-react'
+import HealthIdLoadingIcon from '../ui/HealthIdLoadingIcon'
 import { api } from '../../api/client'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
@@ -87,7 +88,7 @@ export default function AdminPatients() {
 
       {loading ? (
         <div className="flex justify-center py-12 text-white/50">
-          <Loader2 className="h-6 w-6 animate-spin" />
+          <HealthIdLoadingIcon size="lg" label="Loading patients" />
         </div>
       ) : (
         <div className="glass rounded-xl overflow-x-auto">
@@ -166,7 +167,7 @@ export default function AdminPatients() {
                 onClick={() => deletePatient(selected)}
               >
                 {deleting === selected.id ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <HealthIdLoadingIcon size="sm" label="Loading" />
                 ) : (
                   'Delete patient'
                 )}
@@ -190,7 +191,7 @@ export default function AdminPatients() {
                         disabled={cancelling === a.id}
                         onClick={() => cancelAppointment(a.id)}
                       >
-                        {cancelling === a.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Cancel'}
+                        {cancelling === a.id ? <HealthIdLoadingIcon size="xs" label="Cancelling" /> : 'Cancel'}
                       </Button>
                     )}
                   </div>

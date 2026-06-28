@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import LoadingButton from '../components/ui/LoadingButton'
 
 export default function VerifyEmailPage() {
   const { verifyEmail, resendVerification } = useAuth()
@@ -98,19 +99,23 @@ export default function VerifyEmailPage() {
         </div>
         {error && <p className="text-red-400 text-sm">{error}</p>}
         {message && <p className="text-emerald-400 text-sm">{message}</p>}
-        <button type="submit" disabled={loading} className="w-full bg-accent hover:bg-accent2 py-3 rounded-xl disabled:opacity-50">
-          {loading ? 'Verifying...' : 'Verify email'}
-        </button>
+        <LoadingButton type="submit" loading={loading} loadingLabel="Verifying..." size="full" className="font-medium">
+          Verify email
+        </LoadingButton>
       </form>
 
-      <button
+      <LoadingButton
         type="button"
         onClick={handleResend}
         disabled={resending || loading}
-        className="w-full mt-4 glass py-3 rounded-xl disabled:opacity-50"
+        loading={resending}
+        loadingLabel="Sending..."
+        variant="glass"
+        size="full"
+        className="mt-4"
       >
-        {resending ? 'Sending...' : 'Resend verification email'}
-      </button>
+        Resend verification email
+      </LoadingButton>
 
       <p className="text-center text-sm opacity-60 mt-6">
         Wrong email? <Link to={purpose === 'LOGIN' ? '/login' : '/signup'} className="text-accent2">Go back</Link>

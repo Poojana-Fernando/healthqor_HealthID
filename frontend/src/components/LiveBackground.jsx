@@ -1,9 +1,32 @@
 import bgVideo from '../bgVideo/bg.mp4'
+import { useEffect, useRef } from 'react'
 
 export default function LiveBackground() {
+  const videoRef = useRef(null)
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return undefined
+
+    // Pause video decode while the tab is hidden — saves GPU/power with no
+    // visual change (nothing is on screen anyway), resumes on return.
+    const syncPlayback = () => {
+      if (document.visibilityState === 'visible') {
+        video.play().catch(() => {})
+      } else {
+        video.pause()
+      }
+    }
+
+    syncPlayback()
+    document.addEventListener('visibilitychange', syncPlayback)
+    return () => document.removeEventListener('visibilitychange', syncPlayback)
+  }, [])
+
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-performance-layer" aria-hidden="true">
       <video
+        ref={videoRef}
         autoPlay
         muted
         loop

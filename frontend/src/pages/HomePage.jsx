@@ -5,6 +5,8 @@ import { api } from '../api/client'
 import AnimatedLogo from '../components/AnimatedLogo'
 import HumanoidFigure from '../components/HumanoidFigure'
 import OrganDetailsCard from '../components/OrganDetailsCard'
+import HealthIdLoadingIcon from '../components/ui/HealthIdLoadingIcon'
+import LoadingButton from '../components/ui/LoadingButton'
 
 const SYMPTOMS = [
   'Headache', 'Fever', 'Cough', 'Fatigue', 'Nausea', 'Chest Pain', 'Dizziness', 'Sore Throat',
@@ -193,13 +195,15 @@ export default function HomePage() {
                 <div className="pt-4 border-t border-white/10 shrink-0">
                   {user ? (
                     <div className="flex flex-wrap gap-4 items-center">
-                      <button
+                      <LoadingButton
                         onClick={runSymptomCheck}
-                        disabled={loading || selected.length === 0}
-                        className="cta-premium px-6 py-2.5 text-xs rounded-xl"
+                        disabled={selected.length === 0}
+                        loading={loading}
+                        loadingLabel="Analysing..."
+                        size="cta"
                       >
-                        {loading ? 'Analysing...' : 'Check Symptoms'}
-                      </button>
+                        Check Symptoms
+                      </LoadingButton>
                       {activeRegion && (
                         <span className="text-xs text-accent2/70 font-mono animate-pulse">
                           Filtered by 3D target
@@ -227,8 +231,8 @@ export default function HomePage() {
 
                 {/* Loading State */}
                 {loading && (
-                  <div className="flex flex-col items-center justify-center h-full py-12 text-center">
-                    <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-accent2 mb-3"></div>
+                  <div className="flex flex-col items-center justify-center h-full py-12 text-center gap-3">
+                    <HealthIdLoadingIcon size="lg" label="Analyzing symptoms" />
                     <p className="text-xs text-accent2 font-mono uppercase tracking-wider">Analyzing Symptoms with AI...</p>
                   </div>
                 )}

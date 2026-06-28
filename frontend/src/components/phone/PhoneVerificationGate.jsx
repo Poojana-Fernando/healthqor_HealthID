@@ -1,13 +1,14 @@
 import { useAuth } from '../../context/AuthContext'
 import PhoneVerificationModal from './PhoneVerificationModal'
+import HealthIdLoadingIcon from '../ui/HealthIdLoadingIcon'
 
 export default function PhoneVerificationGate({ children }) {
   const { user, profile, loading, refreshProfile } = useAuth()
 
   if (loading) {
     return (
-      <div className="min-h-[50vh] flex items-center justify-center text-white/50">
-        Loading...
+      <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3 text-white/50">
+        <HealthIdLoadingIcon size="md" label="Loading" showLabel />
       </div>
     )
   }

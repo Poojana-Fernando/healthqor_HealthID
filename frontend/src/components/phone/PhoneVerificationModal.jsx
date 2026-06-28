@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Loader2 } from 'lucide-react'
 import { api } from '../../api/client'
 import { Button } from '../ui/Button'
+import HealthIdLoadingIcon from '../ui/HealthIdLoadingIcon'
 import { Input } from '../ui/Input'
 import { Label } from '../ui/Label'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/Card'
@@ -109,7 +109,7 @@ export default function PhoneVerificationModal({ mobile, onVerified }) {
               <div className="flex flex-col items-center justify-center gap-3 py-6 text-white/60">
                 {sending ? (
                   <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <HealthIdLoadingIcon size="md" label="Sending code" />
                     <span>Sending code...</span>
                   </>
                 ) : sendFailed ? (
@@ -130,17 +130,12 @@ export default function PhoneVerificationModal({ mobile, onVerified }) {
 
             <Button
               type="submit"
-              disabled={!otpSent || code.length !== 6 || verifying}
+              disabled={!otpSent || code.length !== 6}
+              loading={verifying}
+              loadingLabel="Verifying..."
               className="w-full"
             >
-              {verifying ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Verifying...
-                </>
-              ) : (
-                'Verify phone number'
-              )}
+              Verify phone number
             </Button>
 
             <div className="text-center">

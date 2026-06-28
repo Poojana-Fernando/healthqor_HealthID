@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../api/client'
+import LoadingButton from './ui/LoadingButton'
+import HealthIdLoadingIcon from './ui/HealthIdLoadingIcon'
 
 const WELCOME = "Hello! I'm your Health ID medical assistant. Ask me about human health, wellness, or how to use this app. I only answer health-related questions for people."
 
@@ -90,8 +92,9 @@ export default function ChatbotFab() {
                   </div>
                 ))}
                 {loading && (
-                  <div className="flex justify-start">
-                    <div className="bg-white/10 rounded-2xl px-3 py-2 text-sm opacity-60 animate-pulse">
+                  <div className="flex justify-start items-center gap-2">
+                    <HealthIdLoadingIcon size="xs" label="Thinking" />
+                    <div className="bg-white/10 rounded-2xl px-3 py-2 text-sm opacity-60">
                       Thinking...
                     </div>
                   </div>
@@ -107,13 +110,15 @@ export default function ChatbotFab() {
                   disabled={loading}
                   className="flex-1 bg-navy/40 border border-white/15 rounded-xl px-3 py-2 text-sm placeholder:opacity-40 focus:outline-none focus:border-accent/50"
                 />
-                <button
+                <LoadingButton
                   type="submit"
-                  disabled={loading || !input.trim()}
-                  className="bg-accent hover:bg-accent2 disabled:opacity-40 px-4 py-2 rounded-xl text-sm font-medium transition"
+                  disabled={!input.trim()}
+                  loading={loading}
+                  loadingLabel="Sending..."
+                  className="px-4 py-2 rounded-xl text-sm font-medium"
                 >
                   Send
-                </button>
+                </LoadingButton>
               </form>
             </>
           )}

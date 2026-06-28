@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Loader2, Plus, X } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
+import HealthIdLoadingIcon from '../ui/HealthIdLoadingIcon'
 import { api } from '../../api/client'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
@@ -100,7 +101,7 @@ export default function AdminDoctors() {
 
       {loading ? (
         <div className="flex justify-center py-12 text-white/50">
-          <Loader2 className="h-6 w-6 animate-spin" />
+          <HealthIdLoadingIcon size="lg" label="Loading doctors" />
         </div>
       ) : (
         <div className="glass rounded-xl overflow-x-auto">
