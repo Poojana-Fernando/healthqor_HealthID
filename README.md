@@ -92,9 +92,6 @@ Edit `.env` and set these **required** values:
 | `GOOGLE_CLIENT_ID` | — | Google OAuth client ID (Web application) |
 | `GOOGLE_CLIENT_SECRET` | — | Google OAuth client secret |
 | `VITE_GOOGLE_CLIENT_ID` | — | Same client ID as `GOOGLE_CLIENT_ID` (loaded from root `.env` by Vite) |
-| `GITHUB_CLIENT_ID` | — | GitHub OAuth App client ID |
-| `GITHUB_CLIENT_SECRET` | — | GitHub OAuth App client secret |
-| `VITE_GITHUB_CLIENT_ID` | — | Same client ID as `GITHUB_CLIENT_ID` |
 | `FRONTEND_ORIGIN` | `http://localhost:5173` | CORS origin |
 | `CACHE_TYPE` | `simple` | Use `simple` locally without Redis |
 | `SPRING_PROFILES_ACTIVE` | `dev` | Dev profile disables Redis requirement |
@@ -115,13 +112,7 @@ Edit `.env` and set these **required** values:
 http://localhost:5173/auth/google/callback
 ```
 
-**GitHub OAuth App setup:** Go to GitHub → Settings → Developer settings → OAuth Apps → New OAuth App. Set the **Authorization callback URL** to:
-
-```
-http://localhost:5173/auth/github/callback
-```
-
-For production, add your deployed frontend URLs for both providers.
+For production, add your deployed frontend URL.
 
 ### 4. Start the backend
 
@@ -185,7 +176,6 @@ CACHE_TYPE=simple
 | POST | `/api/auth/reset-password` | Public — OTP or magic link + new password |
 | POST | `/api/auth/resend-password-reset` | Public |
 | POST | `/api/auth/google` | Public |
-| POST | `/api/auth/github` | Public |
 | GET | `/api/profile/me` | Authenticated |
 | PUT | `/api/profile/me` | Authenticated |
 | POST | `/api/ai/symptom-check` | Authenticated |

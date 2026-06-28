@@ -71,12 +71,6 @@ public class AuthController {
         return ResponseEntity.ok(authService.googleAuth(request, response));
     }
 
-    @PostMapping("/github")
-    @Operation(summary = "GitHub OAuth code exchange")
-    public ResponseEntity<AuthResponse> github(@Valid @RequestBody GitHubAuthRequest request, HttpServletResponse response) {
-        return ResponseEntity.ok(authService.githubAuth(request, response));
-    }
-
     @PostMapping("/refresh")
     @Operation(summary = "Refresh JWT access token")
     public ResponseEntity<AuthResponse> refresh(HttpServletRequest request, HttpServletResponse response) {

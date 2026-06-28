@@ -185,6 +185,7 @@ class PasswordResetIntegrationTest {
         register.setPassword(password);
         register.setNationalId("NIC-" + email.hashCode());
         register.setCountry("LK");
+        register.setMobile("+94771234567");
         register.setBirthDate(LocalDate.of(1990, 1, 15));
         register.setBloodType("O+");
         register.setHeightCm(BigDecimal.valueOf(175));

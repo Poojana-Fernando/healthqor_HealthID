@@ -73,13 +73,6 @@ export function AuthProvider({ children }) {
     return res
   }
 
-  const githubLogin = async (code, redirectUri) => {
-    const res = await api.githubAuth({ code, redirectUri })
-    setUser(res)
-    await refreshProfile()
-    return res
-  }
-
   const logout = () => {
     setUser(null)
     setProfile(null)
@@ -95,7 +88,6 @@ export function AuthProvider({ children }) {
       verifyEmail,
       resendVerification,
       googleLogin,
-      githubLogin,
       logout,
       refreshProfile,
       setProfile,

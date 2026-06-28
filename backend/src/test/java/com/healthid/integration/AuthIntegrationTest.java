@@ -189,6 +189,39 @@ class AuthIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void registerRejectsMissingMobile() throws Exception {
+        RegisterRequest register = sampleRegister("nomobile@healthid.lk");
+        register.setMobile(null);
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(register)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void registerRejectsInvalidMobile() throws Exception {
+        RegisterRequest register = sampleRegister("badmobile@healthid.lk");
+        register.setMobile("0771234567");
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(register)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void registerRejectsMissingBloodType() throws Exception {
+        RegisterRequest register = sampleRegister("noblood@healthid.lk");
+        register.setBloodType(null);
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(register)))
+                .andExpect(status().isBadRequest());
+    }
+
     private void completeRegistration(String email) throws Exception {
         RegisterRequest register = sampleRegister(email);
         MvcResult registerResult = mockMvc.perform(post("/api/auth/register")
@@ -216,6 +249,7 @@ class AuthIntegrationTest {
         register.setPassword("password123");
         register.setNationalId("199012345678");
         register.setCountry("LK");
+        register.setMobile("+94771234567");
         register.setBirthDate(LocalDate.of(1990, 1, 15));
         register.setBloodType("O+");
         register.setHeightCm(BigDecimal.valueOf(175));
