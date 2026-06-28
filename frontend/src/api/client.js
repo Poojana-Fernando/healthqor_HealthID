@@ -1,14 +1,46 @@
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
-async function request(path, options = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
+const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH'])
+
+function buildFetchOptions(options = {}) {
+  const method = (options.method || 'GET').toUpperCase()
+  const headers = { ...(options.headers || {}) }
+  let body = options.body
+
+  if (BODY_METHODS.has(method)) {
+    if (body === undefined) {
+      body = '{}'
+    }
+    if (!headers['Content-Type'] && !headers['content-type']) {
+      headers['Content-Type'] = 'application/json'
+    }
+  }
+
+  return {
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
     ...options,
-  })
+    method,
+    headers,
+    body,
+  }
+}
+
+function networkErrorMessage(error) {
+  if (error?.message === 'Failed to fetch' || error?.name === 'TypeError') {
+    const target = API_BASE || 'the dev server proxy (port 8080)'
+    return `Cannot reach the API at ${target}. Ensure the backend is running (cd backend && .\\run.ps1) and the frontend dev server is on port 5173.`
+  }
+  return error?.message || 'Request failed'
+}
+
+async function request(path, options = {}) {
+  let res
+  try {
+    res = await fetch(`${API_BASE}${path}`, buildFetchOptions(options))
+  } catch (error) {
+    throw new Error(networkErrorMessage(error))
+  }
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }))
     let msg = err.message || 'Request failed'
@@ -35,6 +67,9 @@ export const api = {
   resetPassword: (data) => request('/api/auth/reset-password', { method: 'POST', body: JSON.stringify(data) }),
   resendPasswordReset: (data) => request('/api/auth/resend-password-reset', { method: 'POST', body: JSON.stringify(data) }),
   googleAuth: (data) => request('/api/auth/google', { method: 'POST', body: JSON.stringify(data) }),
+  sendPhoneOtp: () => request('/api/auth/send-phone-otp', { method: 'POST' }),
+  resendPhoneOtp: () => request('/api/auth/resend-phone-otp', { method: 'POST' }),
+  verifyPhone: (data) => request('/api/auth/verify-phone', { method: 'POST', body: JSON.stringify(data) }),
   refresh: () => request('/api/auth/refresh', { method: 'POST' }),
   getProfile: () => request('/api/profile/me'),
   updateProfile: (data) => request('/api/profile/me', { method: 'PUT', body: JSON.stringify(data) }),

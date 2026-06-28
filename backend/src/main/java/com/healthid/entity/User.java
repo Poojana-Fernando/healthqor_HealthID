@@ -51,6 +51,11 @@ public class User {
 
     private Instant emailVerifiedAt;
 
+    @Builder.Default
+    private boolean phoneVerified = false;
+
+    private Instant phoneVerifiedAt;
+
     private Instant createdAt;
 
     private Instant updatedAt;

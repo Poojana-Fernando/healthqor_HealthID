@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -69,6 +70,26 @@ public class AuthController {
     @Operation(summary = "Google OAuth code exchange")
     public ResponseEntity<AuthResponse> google(@Valid @RequestBody GoogleAuthRequest request, HttpServletResponse response) {
         return ResponseEntity.ok(authService.googleAuth(request, response));
+    }
+
+    @PostMapping("/send-phone-otp")
+    @Operation(summary = "Send SMS verification code to registered mobile")
+    public ResponseEntity<SendPhoneOtpResponse> sendPhoneOtp(@AuthenticationPrincipal String email) {
+        return ResponseEntity.ok(authService.sendPhoneOtp(email));
+    }
+
+    @PostMapping("/resend-phone-otp")
+    @Operation(summary = "Resend SMS verification code")
+    public ResponseEntity<SendPhoneOtpResponse> resendPhoneOtp(@AuthenticationPrincipal String email) {
+        return ResponseEntity.ok(authService.resendPhoneOtp(email));
+    }
+
+    @PostMapping("/verify-phone")
+    @Operation(summary = "Verify mobile number with SMS OTP")
+    public ResponseEntity<VerifyPhoneResponse> verifyPhone(
+            @AuthenticationPrincipal String email,
+            @Valid @RequestBody VerifyPhoneRequest request) {
+        return ResponseEntity.ok(authService.verifyPhone(email, request));
     }
 
     @PostMapping("/refresh")

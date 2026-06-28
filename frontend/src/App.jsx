@@ -13,13 +13,15 @@ import GoogleCallbackPage from './pages/GoogleCallbackPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+import PhoneVerificationGate from './components/phone/PhoneVerificationGate'
 
 export default function App() {
   return (
     <div className="relative min-h-screen text-text">
       <LiveBackground />
       <Navbar />
-      <Routes>
+      <PhoneVerificationGate>
+        <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/signup" element={<SignupPage />} />
@@ -31,7 +33,8 @@ export default function App() {
         <Route path="/echanneling" element={<EChannelingPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/support" element={<SupportPage />} />
-      </Routes>
+        </Routes>
+      </PhoneVerificationGate>
       <ChatbotFab />
     </div>
   )

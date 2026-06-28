@@ -13,7 +13,10 @@ import com.healthid.dto.auth.ResendPasswordResetRequest;
 import com.healthid.dto.auth.ResendVerificationRequest;
 import com.healthid.dto.auth.ResetPasswordRequest;
 import com.healthid.dto.auth.ResetPasswordResponse;
+import com.healthid.dto.auth.SendPhoneOtpResponse;
 import com.healthid.dto.auth.VerifyEmailRequest;
+import com.healthid.dto.auth.VerifyPhoneRequest;
+import com.healthid.dto.auth.VerifyPhoneResponse;
 import com.healthid.entity.Gender;
 import com.healthid.entity.HealthProfile;
 import com.healthid.entity.Role;
@@ -58,6 +61,7 @@ public class AuthService {
     private final AuditLogService auditLogService;
     private final EmailVerificationService emailVerificationService;
     private final PasswordResetService passwordResetService;
+    private final PhoneVerificationService phoneVerificationService;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -81,7 +85,8 @@ public class AuthService {
             HealthIdGenerator healthIdGenerator,
             AuditLogService auditLogService,
             EmailVerificationService emailVerificationService,
-            PasswordResetService passwordResetService) {
+            PasswordResetService passwordResetService,
+            PhoneVerificationService phoneVerificationService) {
         this.userRepository = userRepository;
         this.healthProfileRepository = healthProfileRepository;
         this.passwordEncoder = passwordEncoder;
@@ -93,6 +98,7 @@ public class AuthService {
         this.auditLogService = auditLogService;
         this.emailVerificationService = emailVerificationService;
         this.passwordResetService = passwordResetService;
+        this.phoneVerificationService = phoneVerificationService;
     }
 
     public AuthResultResponse register(RegisterRequest request, HttpServletResponse response) {
@@ -139,6 +145,18 @@ public class AuthService {
 
     public ForgotPasswordResponse resendPasswordReset(ResendPasswordResetRequest request) {
         return passwordResetService.resendReset(request);
+    }
+
+    public SendPhoneOtpResponse sendPhoneOtp(String email) {
+        return phoneVerificationService.sendOtp(email);
+    }
+
+    public SendPhoneOtpResponse resendPhoneOtp(String email) {
+        return phoneVerificationService.resendOtp(email);
+    }
+
+    public VerifyPhoneResponse verifyPhone(String email, VerifyPhoneRequest request) {
+        return phoneVerificationService.verify(email, request);
     }
 
     @Transactional

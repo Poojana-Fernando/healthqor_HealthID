@@ -24,6 +24,7 @@ public class ProfileResponse {
     private Role role;
     private boolean verified;
     private boolean doctorVerified;
+    private boolean phoneVerified;
 
     private Gender gender;
     private String bloodType;

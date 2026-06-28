@@ -301,6 +301,7 @@ public class EmailVerificationService {
                 .role(Role.CITIZEN)
                 .verified(false)
                 .emailVerifiedAt(Instant.now())
+                .phoneVerified(false)
                 .build();
         userRepository.save(user);
 

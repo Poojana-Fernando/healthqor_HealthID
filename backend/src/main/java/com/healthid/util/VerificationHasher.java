@@ -43,6 +43,17 @@ public final class VerificationHasher {
         );
     }
 
+    public static String maskMobile(String mobile) {
+        if (mobile == null || mobile.length() < 6) {
+            return "***";
+        }
+        int visibleSuffix = Math.min(3, mobile.length());
+        String suffix = mobile.substring(mobile.length() - visibleSuffix);
+        String prefix = mobile.substring(0, mobile.length() - visibleSuffix);
+        String maskedPrefix = prefix.replaceAll("\\d", "•");
+        return maskedPrefix + suffix;
+    }
+
     public static String maskEmail(String email) {
         if (email == null || !email.contains("@")) {
             return "***";

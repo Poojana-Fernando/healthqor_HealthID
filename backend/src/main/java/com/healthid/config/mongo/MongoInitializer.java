@@ -38,6 +38,7 @@ public class MongoInitializer implements ApplicationRunner {
         ensureCollection(database, "audit_logs", auditLogsValidator());
         ensureCollection(database, "email_verification_challenges", emailVerificationChallengesValidator());
         ensureCollection(database, "pending_registrations", pendingRegistrationsValidator());
+        ensureCollection(database, "phone_verification_challenges", phoneVerificationChallengesValidator());
         log.info("MongoDB collections and validators initialized");
     }
 
@@ -67,6 +68,8 @@ public class MongoInitializer implements ApplicationRunner {
                         .append("role", new Document("enum", java.util.List.of("CITIZEN", "DOCTOR", "ADMIN")))
                         .append("verified", new Document("bsonType", "bool"))
                         .append("emailVerifiedAt", new Document("bsonType", "date"))
+                        .append("phoneVerified", new Document("bsonType", "bool"))
+                        .append("phoneVerifiedAt", new Document("bsonType", "date"))
                         .append("createdAt", new Document("bsonType", "date"))
                         .append("updatedAt", new Document("bsonType", "date"))));
     }
@@ -149,6 +152,22 @@ public class MongoInitializer implements ApplicationRunner {
                         .append("maxAttempts", new Document("bsonType", "int"))
                         .append("consumedAt", new Document("bsonType", "date"))
                         .append("createdAt", new Document("bsonType", "date"))));
+    }
+
+    private Document phoneVerificationChallengesValidator() {
+        return new Document("$jsonSchema", new Document()
+                .append("bsonType", "object")
+                .append("required", java.util.List.of("userId", "mobile", "otpHash", "expiresAt", "createdAt"))
+                .append("properties", new Document()
+                        .append("userId", new Document("bsonType", "string"))
+                        .append("mobile", new Document("bsonType", "string"))
+                        .append("otpHash", new Document("bsonType", "string"))
+                        .append("expiresAt", new Document("bsonType", "date"))
+                        .append("attempts", new Document("bsonType", "int"))
+                        .append("maxAttempts", new Document("bsonType", "int"))
+                        .append("consumedAt", new Document("bsonType", "date"))
+                        .append("createdAt", new Document("bsonType", "date"))
+                        .append("lastSentAt", new Document("bsonType", "date"))));
     }
 
     private Document pendingRegistrationsValidator() {

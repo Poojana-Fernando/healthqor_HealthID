@@ -63,7 +63,14 @@ public class ProfileService {
                 .orElseThrow(() -> new ResourceNotFoundException("Health profile not found"));
 
         if (request.getName() != null) user.setName(request.getName());
-        if (request.getMobile() != null) user.setMobile(request.getMobile());
+        if (request.getMobile() != null) {
+            String normalized = request.getMobile().trim();
+            if (!normalized.equals(user.getMobile())) {
+                user.setMobile(normalized);
+                user.setPhoneVerified(false);
+                user.setPhoneVerifiedAt(null);
+            }
+        }
         if (request.getGender() != null) profile.setGender(request.getGender());
         if (request.getBloodType() != null) profile.setBloodType(request.getBloodType());
         if (request.getHeightCm() != null) profile.setHeightCm(request.getHeightCm());
@@ -95,6 +102,7 @@ public class ProfileService {
                 .role(user.getRole())
                 .verified(user.isVerified())
                 .doctorVerified(profile.isDoctorVerified())
+                .phoneVerified(user.isPhoneVerified())
                 .gender(profile.getGender())
                 .bloodType(profile.getBloodType())
                 .heightCm(profile.getHeightCm())
