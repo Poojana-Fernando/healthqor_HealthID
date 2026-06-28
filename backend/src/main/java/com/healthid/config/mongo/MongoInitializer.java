@@ -141,7 +141,7 @@ public class MongoInitializer implements ApplicationRunner {
                 .append("required", java.util.List.of("email", "purpose", "otpHash", "magicTokenHash", "expiresAt", "createdAt"))
                 .append("properties", new Document()
                         .append("email", new Document("bsonType", "string"))
-                        .append("purpose", new Document("enum", java.util.List.of("REGISTER", "LOGIN")))
+                        .append("purpose", new Document("enum", java.util.List.of("REGISTER", "LOGIN", "PASSWORD_RESET")))
                         .append("otpHash", new Document("bsonType", "string"))
                         .append("magicTokenHash", new Document("bsonType", "string"))
                         .append("expiresAt", new Document("bsonType", "date"))

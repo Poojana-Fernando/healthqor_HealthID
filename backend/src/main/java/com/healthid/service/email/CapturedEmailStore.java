@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class CapturedEmailStore {
 
     private final AtomicReference<VerificationEmailPayload> lastEmail = new AtomicReference<>();
+    private final AtomicReference<PasswordResetEmailPayload> lastPasswordResetEmail = new AtomicReference<>();
 
     public void capture(VerificationEmailPayload payload) {
         lastEmail.set(payload);
@@ -17,7 +18,16 @@ public class CapturedEmailStore {
         return lastEmail.get();
     }
 
+    public void capturePasswordReset(PasswordResetEmailPayload payload) {
+        lastPasswordResetEmail.set(payload);
+    }
+
+    public PasswordResetEmailPayload getLastPasswordReset() {
+        return lastPasswordResetEmail.get();
+    }
+
     public void clear() {
         lastEmail.set(null);
+        lastPasswordResetEmail.set(null);
     }
 }

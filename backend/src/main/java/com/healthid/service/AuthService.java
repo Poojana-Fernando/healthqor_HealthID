@@ -4,11 +4,16 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.healthid.dto.auth.AuthResultResponse;
 import com.healthid.dto.auth.AuthResponse;
+import com.healthid.dto.auth.ForgotPasswordRequest;
+import com.healthid.dto.auth.ForgotPasswordResponse;
 import com.healthid.dto.auth.GitHubAuthRequest;
 import com.healthid.dto.auth.GoogleAuthRequest;
 import com.healthid.dto.auth.LoginRequest;
 import com.healthid.dto.auth.RegisterRequest;
+import com.healthid.dto.auth.ResendPasswordResetRequest;
 import com.healthid.dto.auth.ResendVerificationRequest;
+import com.healthid.dto.auth.ResetPasswordRequest;
+import com.healthid.dto.auth.ResetPasswordResponse;
 import com.healthid.dto.auth.VerifyEmailRequest;
 import com.healthid.entity.Gender;
 import com.healthid.entity.HealthProfile;
@@ -53,6 +58,7 @@ public class AuthService {
     private final HealthIdGenerator healthIdGenerator;
     private final AuditLogService auditLogService;
     private final EmailVerificationService emailVerificationService;
+    private final PasswordResetService passwordResetService;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -81,7 +87,8 @@ public class AuthService {
             EncryptionService encryptionService,
             HealthIdGenerator healthIdGenerator,
             AuditLogService auditLogService,
-            EmailVerificationService emailVerificationService) {
+            EmailVerificationService emailVerificationService,
+            PasswordResetService passwordResetService) {
         this.userRepository = userRepository;
         this.healthProfileRepository = healthProfileRepository;
         this.passwordEncoder = passwordEncoder;
@@ -92,6 +99,7 @@ public class AuthService {
         this.healthIdGenerator = healthIdGenerator;
         this.auditLogService = auditLogService;
         this.emailVerificationService = emailVerificationService;
+        this.passwordResetService = passwordResetService;
     }
 
     public AuthResultResponse register(RegisterRequest request, HttpServletResponse response) {
@@ -126,6 +134,18 @@ public class AuthService {
 
     public AuthResultResponse resendVerification(ResendVerificationRequest request) {
         return emailVerificationService.resend(request);
+    }
+
+    public ForgotPasswordResponse forgotPassword(ForgotPasswordRequest request) {
+        return passwordResetService.requestReset(request.getEmail());
+    }
+
+    public ResetPasswordResponse resetPassword(ResetPasswordRequest request) {
+        return passwordResetService.resetPassword(request);
+    }
+
+    public ForgotPasswordResponse resendPasswordReset(ResendPasswordResetRequest request) {
+        return passwordResetService.resendReset(request);
     }
 
     @Transactional

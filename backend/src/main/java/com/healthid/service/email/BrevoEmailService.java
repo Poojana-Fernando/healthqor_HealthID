@@ -34,23 +34,45 @@ public class BrevoEmailService implements EmailService {
 
     @Override
     public void sendVerificationEmail(VerificationEmailPayload payload) {
+        sendTransactionalEmail(
+                payload.toEmail(),
+                "Verify your Health ID email",
+                buildHtml(payload),
+                buildText(payload)
+        );
+    }
+
+    @Override
+    public void sendPasswordResetEmail(PasswordResetEmailPayload payload) {
+        sendTransactionalEmail(
+                payload.toEmail(),
+                "Reset your Health ID password",
+                buildResetHtml(payload),
+                buildResetText(payload)
+        );
+    }
+
+    private void validateConfig() {
         if (apiKey == null || apiKey.isBlank()) {
             throw new BadRequestException("Brevo API key is not configured");
         }
         if (senderEmail == null || senderEmail.isBlank()) {
             throw new BadRequestException("Brevo sender email is not configured");
         }
+    }
 
+    private void sendTransactionalEmail(String toEmail, String subject, String html, String text) {
+        validateConfig();
         HttpHeaders headers = new HttpHeaders();
         headers.set("api-key", apiKey);
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("sender", Map.of("name", senderName, "email", senderEmail));
-        body.put("to", List.of(Map.of("email", payload.toEmail())));
-        body.put("subject", "Verify your Health ID email");
-        body.put("htmlContent", buildHtml(payload));
-        body.put("textContent", buildText(payload));
+        body.put("to", List.of(Map.of("email", toEmail)));
+        body.put("subject", subject);
+        body.put("htmlContent", html);
+        body.put("textContent", text);
 
         try {
             restTemplate.postForEntity(
@@ -59,7 +81,7 @@ public class BrevoEmailService implements EmailService {
                     String.class
             );
         } catch (HttpStatusCodeException e) {
-            throw new BadRequestException("Failed to send verification email. Check Brevo configuration.");
+            throw new BadRequestException("Failed to send email. Check Brevo configuration.");
         }
     }
 
@@ -96,5 +118,30 @@ public class BrevoEmailService implements EmailService {
                 payload.magicLinkUrl(),
                 payload.expiryMinutes()
         );
+    }
+
+    private String buildResetHtml(PasswordResetEmailPayload payload) {
+        return """
+                <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;">
+                  <h2 style="color:#0ea5e9;">Reset Your Password</h2>
+                  <p>Use this code to reset your Health ID password:</p>
+                  <p style="font-size:28px;font-weight:bold;letter-spacing:6px;">%s</p>
+                  <p>Or click the button below:</p>
+                  <p><a href="%s" style="background:#0ea5e9;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Reset Password</a></p>
+                  <p style="color:#666;font-size:13px;">This code and link expire in %d minutes.</p>
+                </div>
+                """.formatted(payload.otpCode(), payload.magicLinkUrl(), payload.expiryMinutes());
+    }
+
+    private String buildResetText(PasswordResetEmailPayload payload) {
+        return """
+                Reset Your Health ID Password
+
+                Use this code: %s
+
+                Or open this link: %s
+
+                Expires in %d minutes.
+                """.formatted(payload.otpCode(), payload.magicLinkUrl(), payload.expiryMinutes());
     }
 }

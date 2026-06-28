@@ -181,6 +181,9 @@ CACHE_TYPE=simple
 | POST | `/api/auth/login` | Public — may require email re-verification |
 | POST | `/api/auth/verify-email` | Public — OTP or magic link token |
 | POST | `/api/auth/resend-verification` | Public |
+| POST | `/api/auth/forgot-password` | Public — sends reset email for password-based accounts |
+| POST | `/api/auth/reset-password` | Public — OTP or magic link + new password |
+| POST | `/api/auth/resend-password-reset` | Public |
 | POST | `/api/auth/google` | Public |
 | POST | `/api/auth/github` | Public |
 | GET | `/api/profile/me` | Authenticated |

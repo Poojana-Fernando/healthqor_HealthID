@@ -47,6 +47,24 @@ public class AuthController {
         return ResponseEntity.ok(authService.resendVerification(request));
     }
 
+    @PostMapping("/forgot-password")
+    @Operation(summary = "Request a password reset email")
+    public ResponseEntity<ForgotPasswordResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        return ResponseEntity.ok(authService.forgotPassword(request));
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(summary = "Reset password with OTP or magic link token")
+    public ResponseEntity<ResetPasswordResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        return ResponseEntity.ok(authService.resetPassword(request));
+    }
+
+    @PostMapping("/resend-password-reset")
+    @Operation(summary = "Resend password reset email for an active challenge")
+    public ResponseEntity<ForgotPasswordResponse> resendPasswordReset(@Valid @RequestBody ResendPasswordResetRequest request) {
+        return ResponseEntity.ok(authService.resendPasswordReset(request));
+    }
+
     @PostMapping("/google")
     @Operation(summary = "Google OAuth code exchange")
     public ResponseEntity<AuthResponse> google(@Valid @RequestBody GoogleAuthRequest request, HttpServletResponse response) {

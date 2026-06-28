@@ -28,4 +28,15 @@ public class NoOpEmailService implements EmailService {
                 payload.magicLinkUrl()
         );
     }
+
+    @Override
+    public void sendPasswordResetEmail(PasswordResetEmailPayload payload) {
+        capturedEmailStore.capturePasswordReset(payload);
+        log.info(
+                "DEV password reset for {}: OTP={}, magicLink={}",
+                payload.toEmail(),
+                payload.otpCode(),
+                payload.magicLinkUrl()
+        );
+    }
 }

@@ -13,4 +13,7 @@ public interface EmailVerificationChallengeRepository extends MongoRepository<Em
     Optional<EmailVerificationChallenge> findByIdAndConsumedAtIsNull(String id);
 
     long countByEmailAndCreatedAtAfter(String email, Instant since);
+
+    Optional<EmailVerificationChallenge> findTopByEmailAndPurposeAndConsumedAtIsNullOrderByCreatedAtDesc(
+            String email, com.healthid.entity.VerificationPurpose purpose);
 }
