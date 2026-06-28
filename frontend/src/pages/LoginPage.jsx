@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { startGoogleOAuth } from '../utils/googleAuth'
-import { isGitHubOAuthConfigured, startGitHubOAuth } from '../utils/githubAuth'
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -21,22 +20,23 @@ export default function LoginPage() {
     }
   }
 
-  const handleGitHub = () => {
-    setError('')
-    try {
-      startGitHubOAuth()
-    } catch (e) {
-      setError(e.message)
-    }
-  }
-
   const submit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
     try {
-      await login(email, password)
-      navigate('/profile')
+      const res = await login(email, password)
+      if (res.requiresVerification) {
+        navigate('/verify-email', {
+          state: {
+            challengeId: res.challengeId,
+            maskedEmail: res.maskedEmail,
+            purpose: res.purpose,
+          },
+        })
+        return
+      }
+      navigate(res.role === 'ADMIN' ? '/admin' : '/profile')
     } catch (err) {
       setError(err.message)
     } finally {
@@ -67,6 +67,9 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             className="w-full bg-navy/50 border border-border rounded-lg px-3 py-2"
           />
+          <div className="text-right mt-1">
+            <Link to="/forgot-password" className="text-sm text-accent2">Forgot password?</Link>
+          </div>
         </div>
         {error && <p className="text-red-400 text-sm">{error}</p>}
         <button type="submit" disabled={loading} className="w-full bg-accent hover:bg-accent2 py-3 rounded-xl disabled:opacity-50">
@@ -81,20 +84,13 @@ export default function LoginPage() {
       </div>
 
       <button
+        type="button"
         onClick={handleGoogle}
-        className="w-full glass flex items-center justify-center gap-3 py-3 rounded-xl mb-3 hover:border-accent transition"
+        className="w-full glass flex items-center justify-center gap-3 py-3 rounded-xl hover:border-accent transition"
       >
         <span className="text-xl">G</span> Continue with Google
       </button>
-      {isGitHubOAuthConfigured() && (
-        <button
-          onClick={handleGitHub}
-          className="w-full glass flex items-center justify-center gap-3 py-3 rounded-xl mb-6 hover:border-accent transition"
-        >
-          <span className="text-xl">GH</span> Continue with GitHub
-        </button>
-      )}
-      {!isGitHubOAuthConfigured() && <div className="mb-6" />}
+
       <p className="text-center text-sm opacity-60 mt-6">
         No account? <Link to="/signup" className="text-accent2">Sign up</Link>
       </p>

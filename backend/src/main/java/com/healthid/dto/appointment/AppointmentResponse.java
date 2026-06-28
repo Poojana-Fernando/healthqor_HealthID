@@ -14,6 +14,8 @@ public class AppointmentResponse {
     private String referenceNumber;
     private String doctorId;
     private String doctorName;
+    private String patientId;
+    private String patientName;
     private String specialization;
     private String hospital;
     private Instant scheduledAt;

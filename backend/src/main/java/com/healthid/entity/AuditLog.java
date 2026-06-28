@@ -1,13 +1,14 @@
 package com.healthid.entity;
 
-import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 import java.util.UUID;
 
-@Entity
-@Table(name = "audit_logs")
+@Document(collection = "audit_logs")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -16,29 +17,23 @@ import java.util.UUID;
 public class AuditLog {
 
     @Id
-    @Column(columnDefinition = "CHAR(36)")
     private String id;
 
-    @Column(name = "user_id", columnDefinition = "CHAR(36)")
+    @Indexed
     private String userId;
 
-    @Column(nullable = false, length = 100)
     private String action;
 
-    @Column(name = "entity_type", nullable = false, length = 100)
     private String entityType;
 
-    @Column(name = "entity_id", length = 100)
     private String entityId;
 
-    @Column(name = "ip_address", length = 45)
     private String ipAddress;
 
-    @Column(nullable = false)
+    @Indexed
     private Instant timestamp;
 
-    @PrePersist
-    void prePersist() {
+    public void prepareForPersist() {
         if (id == null) {
             id = UUID.randomUUID().toString();
         }

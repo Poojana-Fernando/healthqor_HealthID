@@ -3,9 +3,10 @@
 ENV_FILE="../.env"
 if [ -f "$ENV_FILE" ]; then
     while IFS= read -r line || [ -n "$line" ]; do
-        # Ignore comments and empty lines
         if [[ ! "$line" =~ ^[[:space:]]*# ]] && [[ ! "$line" =~ ^[[:space:]]*$ ]]; then
-            # Export variable, handle lines with '='
+            if [[ "$line" == VITE_* ]]; then
+                continue
+            fi
             if [[ "$line" == *"="* ]]; then
                 export "$line"
             fi
@@ -16,8 +17,7 @@ else
     echo "Warning: .env not found at $ENV_FILE"
 fi
 
-# Ensure required env vars are set
-required=("DB_USER" "DB_PASSWORD" "HEALTHID_ENCRYPTION_KEY" "JWT_SECRET")
+required=("MONGODB_URI" "HEALTHID_ENCRYPTION_KEY" "JWT_SECRET")
 for var in "${required[@]}"; do
     if [ -z "${!var}" ]; then
         echo "Error: Missing required env var: $var"
@@ -25,5 +25,7 @@ for var in "${required[@]}"; do
     fi
 done
 
-# Run maven
+export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-dev}"
+export CACHE_TYPE="${CACHE_TYPE:-simple}"
+
 mvn spring-boot:run

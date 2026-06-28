@@ -56,6 +56,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneral(Exception ex) {
+        log.error("Unhandled exception", ex);
         return error(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
     }
 

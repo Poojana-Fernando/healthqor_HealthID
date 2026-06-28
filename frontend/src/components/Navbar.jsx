@@ -29,6 +29,9 @@ export default function Navbar() {
             e-Channeling
           </a>
           <Link to="/support" className="hover:text-accent2 transition">Support</Link>
+          {user?.role === 'ADMIN' && (
+            <Link to="/admin" className="hover:text-accent2 transition text-accent">Admin</Link>
+          )}
         </div>
 
         <div className="flex items-center gap-3">

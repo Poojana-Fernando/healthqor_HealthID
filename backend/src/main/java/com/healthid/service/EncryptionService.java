@@ -73,6 +73,20 @@ public class EncryptionService {
         return decrypt(encrypted);
     }
 
+    public byte[] encryptOptional(String plaintext) {
+        if (plaintext == null || plaintext.isBlank()) {
+            return null;
+        }
+        return encrypt(plaintext);
+    }
+
+    public String decryptOptional(byte[] encrypted) {
+        if (encrypted == null || encrypted.length == 0) {
+            return null;
+        }
+        return decrypt(encrypted);
+    }
+
     public static String sha256Prefix(String input) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");

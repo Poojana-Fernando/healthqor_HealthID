@@ -2,15 +2,26 @@ package com.healthid.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.healthid.dto.auth.AuthResultResponse;
 import com.healthid.dto.auth.AuthResponse;
-import com.healthid.dto.auth.GitHubAuthRequest;
+import com.healthid.dto.auth.ForgotPasswordRequest;
+import com.healthid.dto.auth.ForgotPasswordResponse;
 import com.healthid.dto.auth.GoogleAuthRequest;
 import com.healthid.dto.auth.LoginRequest;
 import com.healthid.dto.auth.RegisterRequest;
+import com.healthid.dto.auth.ResendPasswordResetRequest;
+import com.healthid.dto.auth.ResendVerificationRequest;
+import com.healthid.dto.auth.ResetPasswordRequest;
+import com.healthid.dto.auth.ResetPasswordResponse;
+import com.healthid.dto.auth.SendPhoneOtpResponse;
+import com.healthid.dto.auth.VerifyEmailRequest;
+import com.healthid.dto.auth.VerifyPhoneRequest;
+import com.healthid.dto.auth.VerifyPhoneResponse;
 import com.healthid.entity.Gender;
 import com.healthid.entity.HealthProfile;
 import com.healthid.entity.Role;
 import com.healthid.entity.User;
+import com.healthid.entity.VerificationPurpose;
 import com.healthid.exception.BadRequestException;
 import com.healthid.exception.UnauthorizedException;
 import com.healthid.repository.HealthProfileRepository;
@@ -32,11 +43,9 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class AuthService {
@@ -50,6 +59,9 @@ public class AuthService {
     private final EncryptionService encryptionService;
     private final HealthIdGenerator healthIdGenerator;
     private final AuditLogService auditLogService;
+    private final EmailVerificationService emailVerificationService;
+    private final PasswordResetService passwordResetService;
+    private final PhoneVerificationService phoneVerificationService;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -58,12 +70,6 @@ public class AuthService {
 
     @Value("${spring.security.oauth2.client.registration.google.client-secret}")
     private String googleClientSecret;
-
-    @Value("${github.client.id}")
-    private String githubClientId;
-
-    @Value("${github.client.secret}")
-    private String githubClientSecret;
 
     @Value("${frontend.origin}")
     private String frontendOrigin;
@@ -77,7 +83,10 @@ public class AuthService {
             CustomUserDetailsService userDetailsService,
             EncryptionService encryptionService,
             HealthIdGenerator healthIdGenerator,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            EmailVerificationService emailVerificationService,
+            PasswordResetService passwordResetService,
+            PhoneVerificationService phoneVerificationService) {
         this.userRepository = userRepository;
         this.healthProfileRepository = healthProfileRepository;
         this.passwordEncoder = passwordEncoder;
@@ -87,55 +96,16 @@ public class AuthService {
         this.encryptionService = encryptionService;
         this.healthIdGenerator = healthIdGenerator;
         this.auditLogService = auditLogService;
+        this.emailVerificationService = emailVerificationService;
+        this.passwordResetService = passwordResetService;
+        this.phoneVerificationService = phoneVerificationService;
     }
 
-    @Transactional
-    public AuthResponse register(RegisterRequest request, HttpServletResponse response) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new BadRequestException("Email already registered");
-        }
-
-        String healthId = healthIdGenerator.generate(request.getCountry(), request.getBirthDate(), request.getNationalId());
-        while (userRepository.existsByHealthId(healthId)) {
-            healthId = healthIdGenerator.generate(request.getCountry(), request.getBirthDate(), request.getNationalId());
-        }
-
-        User user = User.builder()
-                .name(request.getName())
-                .email(request.getEmail())
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .mobile(request.getMobile())
-                .country(request.getCountry())
-                .nationalId(encryptionService.encryptNationalId(request.getNationalId()))
-                .healthId(healthId)
-                .role(Role.CITIZEN)
-                .verified(false)
-                .build();
-        userRepository.save(user);
-
-        BigDecimal bmi = calculateBmi(request.getHeightCm(), request.getWeightKg());
-        String allergies = request.getAllergies() != null
-                ? String.join(",", request.getAllergies())
-                : null;
-
-        HealthProfile profile = HealthProfile.builder()
-                .userId(user.getId())
-                .gender(request.getGender() != null ? request.getGender() : com.healthid.entity.Gender.MALE)
-                .bloodType(request.getBloodType())
-                .heightCm(request.getHeightCm())
-                .weightKg(request.getWeightKg())
-                .bmi(bmi)
-                .birthDate(request.getBirthDate())
-                .allergies(allergies)
-                .build();
-        healthProfileRepository.save(profile);
-
-        auditLogService.log(user.getId(), "REGISTER", "User", user.getId());
-        setTokenCookies(user, response);
-        return toAuthResponse(user);
+    public AuthResultResponse register(RegisterRequest request, HttpServletResponse response) {
+        return emailVerificationService.startRegistration(request);
     }
 
-    public AuthResponse login(LoginRequest request, HttpServletResponse response) {
+    public AuthResultResponse login(LoginRequest request, HttpServletResponse response) {
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
@@ -144,9 +114,49 @@ public class AuthService {
             throw new UnauthorizedException("Invalid email or password");
         }
         User user = userDetailsService.loadEntityByEmail(request.getEmail());
+        if (user.getRole() == Role.CITIZEN && emailVerificationService.needsEmailReverification(user)) {
+            return emailVerificationService.startLoginVerification(user);
+        }
         auditLogService.log(user.getId(), "LOGIN", "User", user.getId());
         setTokenCookies(user, response);
-        return toAuthResponse(user);
+        return AuthResultResponse.fromAuth(toAuthResponse(user));
+    }
+
+    public AuthResultResponse verifyEmail(VerifyEmailRequest request, HttpServletResponse response) {
+        VerificationResult result = emailVerificationService.verify(request);
+        if (result.purpose() == VerificationPurpose.LOGIN) {
+            auditLogService.log(result.user().getId(), "LOGIN", "User", result.user().getId());
+        }
+        setTokenCookies(result.user(), response);
+        return AuthResultResponse.fromAuth(toAuthResponse(result.user()));
+    }
+
+    public AuthResultResponse resendVerification(ResendVerificationRequest request) {
+        return emailVerificationService.resend(request);
+    }
+
+    public ForgotPasswordResponse forgotPassword(ForgotPasswordRequest request) {
+        return passwordResetService.requestReset(request.getEmail());
+    }
+
+    public ResetPasswordResponse resetPassword(ResetPasswordRequest request) {
+        return passwordResetService.resetPassword(request);
+    }
+
+    public ForgotPasswordResponse resendPasswordReset(ResendPasswordResetRequest request) {
+        return passwordResetService.resendReset(request);
+    }
+
+    public SendPhoneOtpResponse sendPhoneOtp(String email) {
+        return phoneVerificationService.sendOtp(email);
+    }
+
+    public SendPhoneOtpResponse resendPhoneOtp(String email) {
+        return phoneVerificationService.resendOtp(email);
+    }
+
+    public VerifyPhoneResponse verifyPhone(String email, VerifyPhoneRequest request) {
+        return phoneVerificationService.verify(email, request);
     }
 
     @Transactional
@@ -231,6 +241,7 @@ public class AuthService {
                 user.setProfileImageUrl(picture);
             }
             user.setName(name);
+            ensureOAuthEmailVerified(user);
             userRepository.save(user);
 
             auditLogService.log(user.getId(), "GOOGLE_LOGIN", "User", user.getId());
@@ -250,148 +261,6 @@ public class AuthService {
         if (googleClientSecret == null || googleClientSecret.isBlank() || "your_google_client_secret".equals(googleClientSecret)) {
             throw new BadRequestException("Google OAuth is not configured on the server. Set GOOGLE_CLIENT_SECRET in .env");
         }
-    }
-
-    @Transactional
-    public AuthResponse githubAuth(GitHubAuthRequest request, HttpServletResponse response) {
-        validateGitHubConfig();
-        try {
-            String redirectUri = request.getRedirectUri() != null && !request.getRedirectUri().isBlank()
-                    ? request.getRedirectUri()
-                    : frontendOrigin + "/auth/github/callback";
-
-            MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-            params.add("code", request.getCode());
-            params.add("client_id", githubClientId);
-            params.add("client_secret", githubClientSecret);
-            params.add("redirect_uri", redirectUri);
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
-            ResponseEntity<String> tokenResponse;
-            try {
-                tokenResponse = restTemplate.postForEntity(
-                        "https://github.com/login/oauth/access_token",
-                        new HttpEntity<>(params, headers),
-                        String.class
-                );
-            } catch (HttpStatusCodeException e) {
-                throw oauthTokenError("GitHub", e);
-            }
-
-            JsonNode tokenJson = objectMapper.readTree(tokenResponse.getBody());
-            if (tokenJson.has("error")) {
-                String description = tokenJson.has("error_description")
-                        ? tokenJson.get("error_description").asText()
-                        : tokenJson.get("error").asText();
-                throw new BadRequestException("GitHub token exchange failed: " + description);
-            }
-            if (!tokenJson.has("access_token")) {
-                throw new BadRequestException("GitHub token exchange failed: no access token returned");
-            }
-            String accessToken = tokenJson.get("access_token").asText();
-
-            HttpHeaders userHeaders = new HttpHeaders();
-            userHeaders.setBearerAuth(accessToken);
-            userHeaders.setAccept(List.of(MediaType.APPLICATION_JSON));
-            ResponseEntity<String> userInfoResponse = restTemplate.exchange(
-                    "https://api.github.com/user",
-                    HttpMethod.GET,
-                    new HttpEntity<>(userHeaders),
-                    String.class
-            );
-
-            JsonNode userInfo = objectMapper.readTree(userInfoResponse.getBody());
-            String githubSub = String.valueOf(userInfo.get("id").asLong());
-            String name = userInfo.has("name") && !userInfo.get("name").isNull()
-                    ? userInfo.get("name").asText()
-                    : userInfo.get("login").asText();
-            String picture = userInfo.has("avatar_url") ? userInfo.get("avatar_url").asText() : null;
-            String email = resolveGitHubEmail(accessToken, userInfo);
-
-            User user = userRepository.findByGithubSub(githubSub)
-                    .or(() -> userRepository.findByEmail(email))
-                    .orElseGet(() -> registerGithubUser(githubSub, email, name, picture));
-
-            if (user.getGithubSub() == null) {
-                user.setGithubSub(githubSub);
-            }
-            if (picture != null) {
-                user.setProfileImageUrl(picture);
-            }
-            user.setName(name);
-            userRepository.save(user);
-
-            auditLogService.log(user.getId(), "GITHUB_LOGIN", "User", user.getId());
-            setTokenCookies(user, response);
-            return toAuthResponse(user);
-        } catch (BadRequestException | UnauthorizedException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new BadRequestException("GitHub authentication failed: " + e.getMessage());
-        }
-    }
-
-    private void validateGitHubConfig() {
-        if (githubClientId == null || githubClientId.isBlank() || "your_github_client_id".equals(githubClientId)) {
-            throw new BadRequestException("GitHub OAuth is not configured on the server. Set GITHUB_CLIENT_ID in .env");
-        }
-        if (githubClientSecret == null || githubClientSecret.isBlank() || "your_github_client_secret".equals(githubClientSecret)) {
-            throw new BadRequestException("GitHub OAuth is not configured on the server. Set GITHUB_CLIENT_SECRET in .env");
-        }
-    }
-
-    private String resolveGitHubEmail(String accessToken, JsonNode userInfo) throws Exception {
-        if (userInfo.has("email") && !userInfo.get("email").isNull()) {
-            String email = userInfo.get("email").asText();
-            if (email != null && !email.isBlank()) {
-                return email;
-            }
-        }
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(accessToken);
-        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
-        ResponseEntity<String> emailsResponse = restTemplate.exchange(
-                "https://api.github.com/user/emails",
-                HttpMethod.GET,
-                new HttpEntity<>(headers),
-                String.class
-        );
-        JsonNode emails = objectMapper.readTree(emailsResponse.getBody());
-        if (emails.isArray()) {
-            for (JsonNode entry : emails) {
-                if (entry.has("primary") && entry.get("primary").asBoolean()
-                        && entry.has("verified") && entry.get("verified").asBoolean()) {
-                    return entry.get("email").asText();
-                }
-            }
-            for (JsonNode entry : emails) {
-                if (entry.has("verified") && entry.get("verified").asBoolean()) {
-                    return entry.get("email").asText();
-                }
-            }
-        }
-        throw new BadRequestException("GitHub account has no verified email. Make your email visible in GitHub settings or use email/password signup.");
-    }
-
-    private BadRequestException oauthTokenError(String provider, HttpStatusCodeException e) {
-        String body = e.getResponseBodyAsString();
-        if (body != null && !body.isBlank()) {
-            try {
-                JsonNode errorJson = objectMapper.readTree(body);
-                if (errorJson.has("error_description")) {
-                    return new BadRequestException(provider + " token exchange failed: " + errorJson.get("error_description").asText());
-                }
-                if (errorJson.has("error")) {
-                    return new BadRequestException(provider + " token exchange failed: " + errorJson.get("error").asText());
-                }
-            } catch (Exception ignored) {
-                return new BadRequestException(provider + " token exchange failed: " + body);
-            }
-        }
-        return new BadRequestException(provider + " token exchange failed (HTTP " + e.getStatusCode().value() + "). Check client ID, client secret, and redirect URI.");
     }
 
     private User registerGoogleUser(String googleSub, String email, String name, String picture) {
@@ -414,6 +283,7 @@ public class AuthService {
                 .profileImageUrl(picture)
                 .role(Role.CITIZEN)
                 .verified(false)
+                .emailVerifiedAt(Instant.now())
                 .build();
         userRepository.save(user);
 
@@ -425,40 +295,6 @@ public class AuthService {
         healthProfileRepository.save(profile);
 
         auditLogService.log(user.getId(), "GOOGLE_REGISTER", "User", user.getId());
-        return user;
-    }
-
-    private User registerGithubUser(String githubSub, String email, String name, String picture) {
-        LocalDate defaultBirthDate = LocalDate.of(2000, 1, 1);
-        String country = "LK";
-        String placeholderNationalId = "GITHUB-" + githubSub;
-
-        String healthId = healthIdGenerator.generate(country, defaultBirthDate, placeholderNationalId);
-        while (userRepository.existsByHealthId(healthId)) {
-            healthId = healthIdGenerator.generate(country, defaultBirthDate, placeholderNationalId);
-        }
-
-        User user = User.builder()
-                .name(name)
-                .email(email)
-                .country(country)
-                .nationalId(encryptionService.encryptNationalId(placeholderNationalId))
-                .healthId(healthId)
-                .githubSub(githubSub)
-                .profileImageUrl(picture)
-                .role(Role.CITIZEN)
-                .verified(false)
-                .build();
-        userRepository.save(user);
-
-        HealthProfile profile = HealthProfile.builder()
-                .userId(user.getId())
-                .gender(Gender.MALE)
-                .birthDate(defaultBirthDate)
-                .build();
-        healthProfileRepository.save(profile);
-
-        auditLogService.log(user.getId(), "GITHUB_REGISTER", "User", user.getId());
         return user;
     }
 
@@ -499,6 +335,12 @@ public class AuthService {
         response.addCookie(refreshCookie);
     }
 
+    private void ensureOAuthEmailVerified(User user) {
+        if (user.getEmailVerifiedAt() == null) {
+            user.setEmailVerifiedAt(Instant.now());
+        }
+    }
+
     private AuthResponse toAuthResponse(User user) {
         return AuthResponse.builder()
                 .userId(user.getId())
@@ -508,17 +350,5 @@ public class AuthService {
                 .role(user.getRole())
                 .profileImageUrl(user.getProfileImageUrl())
                 .build();
-    }
-
-    private BigDecimal calculateBmi(BigDecimal heightCm, BigDecimal weightKg) {
-        if (heightCm == null || weightKg == null || heightCm.compareTo(BigDecimal.ZERO) <= 0) {
-            return null;
-        }
-        BigDecimal heightM = heightCm.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
-        BigDecimal bmi = weightKg.divide(heightM.multiply(heightM), 2, RoundingMode.HALF_UP);
-        if (bmi.compareTo(BigDecimal.valueOf(999.99)) > 0) {
-            return BigDecimal.valueOf(999.99);
-        }
-        return bmi;
     }
 }

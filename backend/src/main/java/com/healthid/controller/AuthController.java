@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -25,14 +26,44 @@ public class AuthController {
 
     @PostMapping("/register")
     @Operation(summary = "Register a new user and generate Health ID")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request, HttpServletResponse response) {
+    public ResponseEntity<AuthResultResponse> register(@Valid @RequestBody RegisterRequest request, HttpServletResponse response) {
         return ResponseEntity.ok(authService.register(request, response));
     }
 
     @PostMapping("/login")
     @Operation(summary = "Login with email and password")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
+    public ResponseEntity<AuthResultResponse> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
         return ResponseEntity.ok(authService.login(request, response));
+    }
+
+    @PostMapping("/verify-email")
+    @Operation(summary = "Verify email with OTP or magic link token")
+    public ResponseEntity<AuthResultResponse> verifyEmail(@Valid @RequestBody VerifyEmailRequest request, HttpServletResponse response) {
+        return ResponseEntity.ok(authService.verifyEmail(request, response));
+    }
+
+    @PostMapping("/resend-verification")
+    @Operation(summary = "Resend verification email for an active challenge")
+    public ResponseEntity<AuthResultResponse> resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
+        return ResponseEntity.ok(authService.resendVerification(request));
+    }
+
+    @PostMapping("/forgot-password")
+    @Operation(summary = "Request a password reset email")
+    public ResponseEntity<ForgotPasswordResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        return ResponseEntity.ok(authService.forgotPassword(request));
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(summary = "Reset password with OTP or magic link token")
+    public ResponseEntity<ResetPasswordResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        return ResponseEntity.ok(authService.resetPassword(request));
+    }
+
+    @PostMapping("/resend-password-reset")
+    @Operation(summary = "Resend password reset email for an active challenge")
+    public ResponseEntity<ForgotPasswordResponse> resendPasswordReset(@Valid @RequestBody ResendPasswordResetRequest request) {
+        return ResponseEntity.ok(authService.resendPasswordReset(request));
     }
 
     @PostMapping("/google")
@@ -41,10 +72,24 @@ public class AuthController {
         return ResponseEntity.ok(authService.googleAuth(request, response));
     }
 
-    @PostMapping("/github")
-    @Operation(summary = "GitHub OAuth code exchange")
-    public ResponseEntity<AuthResponse> github(@Valid @RequestBody GitHubAuthRequest request, HttpServletResponse response) {
-        return ResponseEntity.ok(authService.githubAuth(request, response));
+    @PostMapping("/send-phone-otp")
+    @Operation(summary = "Send SMS verification code to registered mobile")
+    public ResponseEntity<SendPhoneOtpResponse> sendPhoneOtp(@AuthenticationPrincipal String email) {
+        return ResponseEntity.ok(authService.sendPhoneOtp(email));
+    }
+
+    @PostMapping("/resend-phone-otp")
+    @Operation(summary = "Resend SMS verification code")
+    public ResponseEntity<SendPhoneOtpResponse> resendPhoneOtp(@AuthenticationPrincipal String email) {
+        return ResponseEntity.ok(authService.resendPhoneOtp(email));
+    }
+
+    @PostMapping("/verify-phone")
+    @Operation(summary = "Verify mobile number with SMS OTP")
+    public ResponseEntity<VerifyPhoneResponse> verifyPhone(
+            @AuthenticationPrincipal String email,
+            @Valid @RequestBody VerifyPhoneRequest request) {
+        return ResponseEntity.ok(authService.verifyPhone(email, request));
     }
 
     @PostMapping("/refresh")

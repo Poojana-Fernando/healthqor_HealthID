@@ -2,29 +2,33 @@ package com.healthid.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.healthid.dto.auth.RegisterRequest;
+import com.healthid.dto.auth.VerifyEmailRequest;
 import com.healthid.security.JwtFilter;
-import com.healthid.security.JwtUtil;
-import com.healthid.entity.Role;
+import com.healthid.service.email.CapturedEmailStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(MongoTestcontainersConfig.class)
 class ProfileIntegrationTest {
 
     @Autowired
@@ -34,40 +38,55 @@ class ProfileIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private JwtUtil jwtUtil;
+    private CapturedEmailStore capturedEmailStore;
 
-    private String accessToken;
+    private jakarta.servlet.http.Cookie accessCookie;
 
     @BeforeEach
     void setUp() throws Exception {
+        capturedEmailStore.clear();
+
         RegisterRequest register = new RegisterRequest();
         register.setName("Profile User");
         register.setEmail("profile@healthid.lk");
         register.setPassword("password123");
         register.setNationalId("199098765432");
         register.setCountry("LK");
+        register.setMobile("+94771234567");
         register.setBirthDate(LocalDate.of(1990, 6, 1));
+        register.setBloodType("O+");
         register.setHeightCm(BigDecimal.valueOf(180));
         register.setWeightKg(BigDecimal.valueOf(75));
 
-        String response = mockMvc.perform(post("/api/auth/register")
+        MvcResult registerResult = mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(register)))
                 .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+                .andReturn();
 
-        String userId = objectMapper.readTree(response).get("userId").asText();
-        accessToken = jwtUtil.generateAccessToken(userId, "profile@healthid.lk", Role.CITIZEN);
+        String challengeId = objectMapper.readTree(registerResult.getResponse().getContentAsString())
+                .get("challengeId").asText();
+
+        VerifyEmailRequest verify = new VerifyEmailRequest();
+        verify.setChallengeId(challengeId);
+        verify.setCode(capturedEmailStore.getLast().otpCode());
+
+        MvcResult verifyResult = mockMvc.perform(post("/api/auth/verify-email")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(verify)))
+                .andExpect(status().isOk())
+                .andExpect(cookie().exists(JwtFilter.ACCESS_TOKEN_COOKIE))
+                .andReturn();
+
+        accessCookie = verifyResult.getResponse().getCookie(JwtFilter.ACCESS_TOKEN_COOKIE);
     }
 
     @Test
     void getProfileWithJwt() throws Exception {
-        mockMvc.perform(get("/api/profile/me")
-                        .cookie(new jakarta.servlet.http.Cookie(JwtFilter.ACCESS_TOKEN_COOKIE, accessToken)))
+        mockMvc.perform(get("/api/profile/me").cookie(accessCookie))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.healthId").value(org.hamcrest.Matchers.startsWith("HID-LK-1990-")))
-                .andExpect(jsonPath("$.name").value("Profile User"));
+                .andExpect(jsonPath("$.name").value("Profile User"))
+                .andExpect(jsonPath("$.phoneVerified").value(false));
     }
 }

@@ -1,13 +1,21 @@
 package com.healthid.entity;
 
-import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.geo.Point;
+import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
+import org.springframework.data.mongodb.core.index.GeoSpatialIndexType;
+import org.springframework.data.mongodb.core.index.GeoSpatialIndexed;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
-@Entity
-@Table(name = "doctors")
+@Document(collection = "doctors")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -16,38 +24,76 @@ import java.util.UUID;
 public class Doctor {
 
     @Id
-    @Column(columnDefinition = "CHAR(36)")
     private String id;
 
-    @Column(name = "user_id", nullable = false, unique = true, columnDefinition = "CHAR(36)")
+    @Indexed(unique = true)
     private String userId;
 
-    @Column(nullable = false)
+    @Indexed
+    private NameTitle nameTitle;
+
+    private byte[] nic;
+
+    @Indexed
     private String specialization;
 
     private String hospital;
 
-    @Column(name = "license_number", nullable = false, length = 100)
+    @Indexed
     private String licenseNumber;
 
-    @Column(precision = 10, scale = 7)
+    @Builder.Default
+    private List<DoctorEducation> education = new ArrayList<>();
+
+    private Integer experienceYears;
+
+    private MaritalStatus maritalStatus;
+
+    @Builder.Default
+    private boolean verifiedByAdmin = false;
+
     private BigDecimal lat;
 
-    @Column(precision = 10, scale = 7)
     private BigDecimal lng;
 
-    @Column(name = "avg_rating", precision = 3, scale = 2)
+    @GeoSpatialIndexed(type = GeoSpatialIndexType.GEO_2DSPHERE)
+    private GeoJsonPoint location;
+
     @Builder.Default
     private BigDecimal avgRating = BigDecimal.ZERO;
 
-    @Column(name = "is_available", nullable = false)
     @Builder.Default
     private boolean available = true;
 
-    @PrePersist
-    void prePersist() {
+    private Instant deactivatedAt;
+
+    private Instant createdAt;
+
+    private Instant updatedAt;
+
+    public void prepareForPersist() {
         if (id == null) {
             id = UUID.randomUUID().toString();
         }
+        Instant now = Instant.now();
+        if (createdAt == null) {
+            createdAt = now;
+        }
+        updatedAt = now;
+        syncLocation();
+    }
+
+    public void touchUpdatedAt() {
+        updatedAt = Instant.now();
+    }
+
+    public void syncLocation() {
+        if (lat != null && lng != null) {
+            location = new GeoJsonPoint(new Point(lng.doubleValue(), lat.doubleValue()));
+        }
+    }
+
+    public boolean isActive() {
+        return deactivatedAt == null;
     }
 }

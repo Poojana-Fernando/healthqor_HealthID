@@ -4,6 +4,7 @@ import com.healthid.dto.doctor.DoctorResponse;
 import com.healthid.entity.Doctor;
 import com.healthid.entity.User;
 import com.healthid.exception.ResourceNotFoundException;
+import com.healthid.repository.DoctorQueryRepository;
 import com.healthid.repository.DoctorRepository;
 import com.healthid.repository.UserRepository;
 import org.springframework.cache.annotation.Cacheable;
@@ -17,17 +18,22 @@ import java.util.List;
 public class DoctorService {
 
     private final DoctorRepository doctorRepository;
+    private final DoctorQueryRepository doctorQueryRepository;
     private final UserRepository userRepository;
 
-    public DoctorService(DoctorRepository doctorRepository, UserRepository userRepository) {
+    public DoctorService(
+            DoctorRepository doctorRepository,
+            DoctorQueryRepository doctorQueryRepository,
+            UserRepository userRepository) {
         this.doctorRepository = doctorRepository;
+        this.doctorQueryRepository = doctorQueryRepository;
         this.userRepository = userRepository;
     }
 
     @Transactional(readOnly = true)
     @Cacheable(value = "nearbyDoctors", key = "#lat + '-' + #lng + '-' + #specialty")
     public List<DoctorResponse> findNearby(BigDecimal lat, BigDecimal lng, String specialty) {
-        return doctorRepository.findNearby(lat, lng, specialty)
+        return doctorQueryRepository.findNearby(lat, lng, specialty)
                 .stream()
                 .limit(20)
                 .map(d -> mapDoctor(d, haversineKm(lat, lng, d.getLat(), d.getLng())))
@@ -37,7 +43,7 @@ public class DoctorService {
     @Transactional(readOnly = true)
     @Cacheable(value = "doctorSearch", key = "#specialty + '-' + #location + '-' + #available + '-' + #minRating")
     public List<DoctorResponse> search(String specialty, String location, Boolean available, BigDecimal minRating) {
-        return doctorRepository.search(specialty, location, available, minRating)
+        return doctorQueryRepository.search(specialty, location, available, minRating)
                 .stream()
                 .map(d -> mapDoctor(d, null))
                 .toList();

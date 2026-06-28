@@ -24,14 +24,17 @@ public class ProfileService {
     private final UserRepository userRepository;
     private final HealthProfileRepository healthProfileRepository;
     private final AuditLogService auditLogService;
+    private final EncryptionService encryptionService;
 
     public ProfileService(
             UserRepository userRepository,
             HealthProfileRepository healthProfileRepository,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            EncryptionService encryptionService) {
         this.userRepository = userRepository;
         this.healthProfileRepository = healthProfileRepository;
         this.auditLogService = auditLogService;
+        this.encryptionService = encryptionService;
     }
 
     @Transactional(readOnly = true)
@@ -60,7 +63,14 @@ public class ProfileService {
                 .orElseThrow(() -> new ResourceNotFoundException("Health profile not found"));
 
         if (request.getName() != null) user.setName(request.getName());
-        if (request.getMobile() != null) user.setMobile(request.getMobile());
+        if (request.getMobile() != null) {
+            String normalized = request.getMobile().trim();
+            if (!normalized.equals(user.getMobile())) {
+                user.setMobile(normalized);
+                user.setPhoneVerified(false);
+                user.setPhoneVerifiedAt(null);
+            }
+        }
         if (request.getGender() != null) profile.setGender(request.getGender());
         if (request.getBloodType() != null) profile.setBloodType(request.getBloodType());
         if (request.getHeightCm() != null) profile.setHeightCm(request.getHeightCm());
@@ -69,7 +79,7 @@ public class ProfileService {
         if (request.getEyesightLeft() != null) profile.setEyesightLeft(request.getEyesightLeft());
         if (request.getEyesightRight() != null) profile.setEyesightRight(request.getEyesightRight());
         if (request.getAllergies() != null) {
-            profile.setAllergies(String.join(",", request.getAllergies()));
+            profile.setAllergies(encryptionService.encryptOptional(String.join(",", request.getAllergies())));
         }
 
         profile.setBmi(calculateBmi(profile.getHeightCm(), profile.getWeightKg()));
@@ -92,6 +102,7 @@ public class ProfileService {
                 .role(user.getRole())
                 .verified(user.isVerified())
                 .doctorVerified(profile.isDoctorVerified())
+                .phoneVerified(user.isPhoneVerified())
                 .gender(profile.getGender())
                 .bloodType(profile.getBloodType())
                 .heightCm(profile.getHeightCm())
@@ -100,7 +111,7 @@ public class ProfileService {
                 .birthDate(profile.getBirthDate())
                 .eyesightLeft(profile.getEyesightLeft())
                 .eyesightRight(profile.getEyesightRight())
-                .allergies(parseAllergies(profile.getAllergies()))
+                .allergies(parseAllergies(encryptionService.decryptOptional(profile.getAllergies())))
                 .aiHealthScore(profile.getAiHealthScore())
                 .lastAiAnalysis(profile.getLastAiAnalysis())
                 .build();

@@ -2,7 +2,7 @@
 
 Digital Health Identity platform for Sri Lanka — encrypted health records, AI symptom triage & diet analysis, 3D profile viewer, e-Channeling, and admin tooling.
 
-**Stack:** Spring Boot 3 · React 18 · MySQL 8 · Redis · OpenAI · Three.js
+**Stack:** Spring Boot 3 · React 18 · MongoDB · Redis · OpenAI · Three.js
 
 ---
 
@@ -42,7 +42,7 @@ healthid/
 | Java | 21+ (25 supported with Lombok 1.18.40+) |
 | Maven | 3.9+ |
 | Node.js | 18+ |
-| MySQL | 8 |
+| MongoDB | 6+ (Atlas cluster or self-hosted replica set) |
 | Redis | Optional for local dev |
 
 ---
@@ -62,14 +62,9 @@ cd healthqor_HealthID
 > git clone https://github.com/Poojana-Fernando/healthqor_HealthID.git
 > ```
 
-### 2. Create the database
+### 2. Configure MongoDB
 
-```sql
-CREATE DATABASE healthid_db;
-CREATE USER 'healthid_user'@'localhost' IDENTIFIED BY 'your_strong_password';
-GRANT ALL PRIVILEGES ON healthid_db.* TO 'healthid_user'@'localhost';
-FLUSH PRIVILEGES;
-```
+Create a database on your MongoDB cluster (e.g. `healthid`) and obtain a connection URI. A **replica set** is required for multi-document transactions (standard on MongoDB Atlas).
 
 ### 3. Configure environment
 
@@ -81,8 +76,7 @@ Edit `.env` and set these **required** values:
 
 | Variable | Description |
 |----------|-------------|
-| `DB_USER` | MySQL username |
-| `DB_PASSWORD` | MySQL password |
+| `MONGODB_URI` | MongoDB connection string (e.g. `mongodb+srv://...`) |
 | `HEALTHID_ENCRYPTION_KEY` | 64-char hex string (32 bytes) — `openssl rand -hex 32` |
 | `JWT_SECRET` | Long random string for signing tokens |
 | `OPENAI_API_KEY` | OpenAI API key for AI features |
@@ -91,16 +85,32 @@ Edit `.env` and set these **required** values:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `MONGODB_DATABASE` | `healthid` | Database name |
+| `ADMIN_EMAIL` | — | First-run admin bootstrap email (only when no ADMIN exists) |
+| `ADMIN_PASSWORD` | — | First-run admin bootstrap password |
+| `ADMIN_NAME` | `System Admin` | Display name for bootstrapped admin |
 | `GOOGLE_CLIENT_ID` | — | Google OAuth client ID (Web application) |
 | `GOOGLE_CLIENT_SECRET` | — | Google OAuth client secret |
 | `VITE_GOOGLE_CLIENT_ID` | — | Same client ID as `GOOGLE_CLIENT_ID` (loaded from root `.env` by Vite) |
-| `GITHUB_CLIENT_ID` | — | GitHub OAuth App client ID |
-| `GITHUB_CLIENT_SECRET` | — | GitHub OAuth App client secret |
-| `VITE_GITHUB_CLIENT_ID` | — | Same client ID as `GITHUB_CLIENT_ID` |
 | `FRONTEND_ORIGIN` | `http://localhost:5173` | CORS origin |
 | `CACHE_TYPE` | `simple` | Use `simple` locally without Redis |
 | `SPRING_PROFILES_ACTIVE` | `dev` | Dev profile disables Redis requirement |
 | `VITE_API_URL` | *(empty)* | Leave empty — Vite proxies to backend |
+| `BREVO_API_KEY` | — | Brevo API v3 key for sending verification emails (optional in dev — OTP logged to console when unset) |
+| `BREVO_SENDER_EMAIL` | — | Verified sender address in Brevo |
+| `BREVO_SENDER_NAME` | `HealthID` | Sender display name |
+| `EMAIL_REVERIFY_DAYS` | `30` | Password logins require email re-verification after this many days |
+| `EMAIL_OTP_EXPIRY_MINUTES` | `15` | OTP / magic link expiry |
+| `TWILIO_ACCOUNT_SID` | — | Twilio account SID for SMS phone verification (optional in dev — OTP logged to console) |
+| `TWILIO_AUTH_TOKEN` | — | Twilio auth token |
+| `TWILIO_FROM_NUMBER` | — | Twilio sender number in E.164 (e.g. `+15017122661`) |
+| `PHONE_OTP_EXPIRY_MINUTES` | `15` | SMS OTP expiry after registration |
+
+**Email verification (Brevo):** Sign up at [Brevo](https://app.brevo.com), verify a sender email or domain, then create an API v3 key. Without `BREVO_API_KEY`, the backend uses a dev no-op mailer that logs OTP codes to the console.
+
+**Phone verification (Twilio):** See [docs/TWILIO_SETUP.md](docs/TWILIO_SETUP.md) for the full setup walkthrough. Without `TWILIO_ACCOUNT_SID`, the backend logs SMS OTP codes to the console (same pattern as email).
+
+> **Never commit `.env`** — it is listed in `.gitignore`.
 
 **Google Cloud Console setup:** Create an OAuth 2.0 **Web application** client and add this authorized redirect URI:
 
@@ -108,15 +118,7 @@ Edit `.env` and set these **required** values:
 http://localhost:5173/auth/google/callback
 ```
 
-**GitHub OAuth App setup:** Go to GitHub → Settings → Developer settings → OAuth Apps → New OAuth App. Set the **Authorization callback URL** to:
-
-```
-http://localhost:5173/auth/github/callback
-```
-
-For production, add your deployed frontend URLs for both providers.
-
-> **Never commit `.env`** — it is listed in `.gitignore`.
+For production, add your deployed frontend URL.
 
 ### 4. Start the backend
 
@@ -138,7 +140,7 @@ mvn spring-boot:run
 - API: http://localhost:8080  
 - Swagger UI: http://localhost:8080/swagger-ui.html
 
-Flyway runs migrations automatically on first start.
+On first start, `MongoInitializer` creates collections with JSON Schema validators and indexes. If no `ADMIN` user exists and `ADMIN_EMAIL`/`ADMIN_PASSWORD` are set, an admin account is bootstrapped automatically.
 
 ### 5. Start the frontend
 
@@ -172,11 +174,18 @@ CACHE_TYPE=simple
 
 | Method | Endpoint | Access |
 |--------|----------|--------|
-| POST | `/api/auth/register` | Public |
-| POST | `/api/auth/login` | Public |
+| POST | `/api/auth/register` | Public — returns verification challenge; user created after `/verify-email` |
+| POST | `/api/auth/login` | Public — may require email re-verification |
+| POST | `/api/auth/verify-email` | Public — OTP or magic link token |
+| POST | `/api/auth/resend-verification` | Public |
+| POST | `/api/auth/forgot-password` | Public — sends reset email for password-based accounts |
+| POST | `/api/auth/reset-password` | Public — OTP or magic link + new password |
+| POST | `/api/auth/resend-password-reset` | Public |
 | POST | `/api/auth/google` | Public |
-| POST | `/api/auth/github` | Public |
-| GET | `/api/profile/me` | Authenticated |
+| POST | `/api/auth/send-phone-otp` | Authenticated — send SMS OTP to registered mobile |
+| POST | `/api/auth/resend-phone-otp` | Authenticated |
+| POST | `/api/auth/verify-phone` | Authenticated — body `{ "code": "123456" }` |
+| GET | `/api/profile/me` | Authenticated — includes `phoneVerified` |
 | PUT | `/api/profile/me` | Authenticated |
 | POST | `/api/ai/symptom-check` | Authenticated |
 | POST | `/api/ai/health-analysis` | Authenticated |
@@ -193,21 +202,7 @@ cd backend
 mvn test
 ```
 
-Integration tests use H2 in-memory with `create-drop` DDL.
-
----
-
-## PostgreSQL migration
-
-Update `backend/src/main/resources/application.properties` and the JDBC driver in `pom.xml`:
-
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/healthid_db
-spring.datasource.driver-class-name=org.postgresql.Driver
-spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
-```
-
-Repository interfaces require no code changes.
+Integration tests use Testcontainers with MongoDB 7. Docker must be running for `mvn test`.
 
 ---
 
@@ -217,7 +212,7 @@ Repository interfaces require no code changes.
 |-------|-----|
 | `mvn` not found (Windows) | Use `backend\mvn.cmd` instead |
 | Port 8080 in use | Stop the existing Java process or change server port |
-| MySQL access denied | Verify `DB_USER` / `DB_PASSWORD` in `.env` |
+| MongoDB connection failed | Verify `MONGODB_URI` in `.env` and cluster IP allowlist (Atlas) |
 | Redis connection errors | Set `CACHE_TYPE=simple` and `SPRING_PROFILES_ACTIVE=dev` |
 | AI returns fallback data | Check `OPENAI_API_KEY` is set and backend was restarted |
 | Frontend can't reach API | Ensure backend is on port 8080; leave `VITE_API_URL` empty for dev proxy |

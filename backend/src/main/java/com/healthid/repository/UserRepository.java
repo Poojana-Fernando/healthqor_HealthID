@@ -1,15 +1,17 @@
 package com.healthid.repository;
 
+import com.healthid.entity.Role;
 import com.healthid.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, String> {
+public interface UserRepository extends MongoRepository<User, String> {
 
     Optional<User> findByEmail(String email);
 
@@ -23,6 +25,32 @@ public interface UserRepository extends JpaRepository<User, String> {
 
     boolean existsByHealthId(String healthId);
 
-    Page<User> findByNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrHealthIdContainingIgnoreCase(
-            String name, String email, String healthId, Pageable pageable);
+    boolean existsByRole(Role role);
+
+    long countByRole(Role role);
+
+    Page<User> findByRole(Role role, Pageable pageable);
+
+    @Query("""
+            {
+              role: ?1,
+              $or: [
+                { name: { $regex: ?0, $options: 'i' } },
+                { email: { $regex: ?0, $options: 'i' } },
+                { healthId: { $regex: ?0, $options: 'i' } }
+              ]
+            }
+            """)
+    Page<User> searchUsersByRole(String search, Role role, Pageable pageable);
+
+    @Query("""
+            {
+              $or: [
+                { name: { $regex: ?0, $options: 'i' } },
+                { email: { $regex: ?0, $options: 'i' } },
+                { healthId: { $regex: ?0, $options: 'i' } }
+              ]
+            }
+            """)
+    Page<User> searchUsers(String search, Pageable pageable);
 }

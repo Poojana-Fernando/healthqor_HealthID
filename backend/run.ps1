@@ -13,10 +13,10 @@ if (Test-Path $envFile) {
     }
     Write-Host "Loaded environment from $envFile"
 } else {
-    Write-Warning ".env not found at $envFile - set DB_USER, DB_PASSWORD, etc. manually"
+    Write-Warning ".env not found at $envFile - set MONGODB_URI, etc. manually"
 }
 
-$required = @('DB_USER', 'DB_PASSWORD', 'HEALTHID_ENCRYPTION_KEY', 'JWT_SECRET')
+$required = @('MONGODB_URI', 'HEALTHID_ENCRYPTION_KEY', 'JWT_SECRET')
 foreach ($var in $required) {
     if (-not [Environment]::GetEnvironmentVariable($var, 'Process')) {
         Write-Error "Missing required env var: $var"
@@ -27,14 +27,20 @@ foreach ($var in $required) {
 if (-not [Environment]::GetEnvironmentVariable('SPRING_PROFILES_ACTIVE', 'Process')) {
     [Environment]::SetEnvironmentVariable('SPRING_PROFILES_ACTIVE', 'dev', 'Process')
 }
-$profiles = [Environment]::GetEnvironmentVariable('SPRING_PROFILES_ACTIVE', 'Process')
-if ([Environment]::GetEnvironmentVariable('DB_USE_H2', 'Process') -eq 'true' -and $profiles -notmatch 'h2') {
-    [Environment]::SetEnvironmentVariable('SPRING_PROFILES_ACTIVE', "$profiles,h2", 'Process')
-    Write-Host "Using H2 database (DB_USE_H2=true)"
-}
 if (-not [Environment]::GetEnvironmentVariable('CACHE_TYPE', 'Process')) {
     [Environment]::SetEnvironmentVariable('CACHE_TYPE', 'simple', 'Process')
 }
 
+# Windows router DNS often fails to resolve *.mongodb.net; force JVM to use public DNS
+$jvmDns = '-Dsun.net.spi.nameservice.provider.1=dns,sun -Dsun.net.spi.nameservice.nameservers=8.8.8.8,1.1.1.1'
+$mavenOpts = [Environment]::GetEnvironmentVariable('MAVEN_OPTS', 'Process')
+if ($mavenOpts) {
+    if ($mavenOpts -notmatch 'sun\.net\.spi\.nameservice\.nameservers') {
+        [Environment]::SetEnvironmentVariable('MAVEN_OPTS', "$mavenOpts $jvmDns", 'Process')
+    }
+} else {
+    [Environment]::SetEnvironmentVariable('MAVEN_OPTS', $jvmDns, 'Process')
+}
+
 $mvn = Join-Path $PSScriptRoot "mvn.cmd"
-& $mvn spring-boot:run @args
+& $mvn spring-boot:run "-Dspring-boot.run.jvmArguments=$jvmDns" @args
