@@ -110,6 +110,30 @@ export const api = {
   adminLookup: (identifier) => request(`/api/admin/users/lookup?identifier=${encodeURIComponent(identifier)}`),
   adminVerifyDoctor: (id, approved) =>
     request(`/api/admin/doctors/${id}/verify?approved=${approved}`, { method: 'POST' }),
+  adminDoctors: ({ search, specialization, verified, sortBy, page = 0, size = 20, sort } = {}) => {
+    const params = new URLSearchParams({ page, size })
+    if (search) params.set('search', search)
+    if (specialization) params.set('specialization', specialization)
+    if (verified != null) params.set('verified', verified)
+    if (sortBy) params.set('sortBy', sortBy)
+    if (sort) params.set('sort', sort)
+    return request(`/api/admin/doctors?${params}`)
+  },
+  adminCreateDoctor: (data) => request('/api/admin/doctors', { method: 'POST', body: JSON.stringify(data) }),
+  adminDoctor: (id) => request(`/api/admin/doctors/${id}`),
+  adminUpdateDoctor: (id, data) => request(`/api/admin/doctors/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  adminDeactivateDoctor: (id) => request(`/api/admin/doctors/${id}`, { method: 'DELETE' }),
+  adminDoctorAppointments: (id, page = 0) =>
+    request(`/api/admin/doctors/${id}/appointments?page=${page}&size=20`),
+  adminPatients: (search, page = 0) => {
+    const params = new URLSearchParams({ page, size: 20 })
+    if (search) params.set('search', search)
+    return request(`/api/admin/patients?${params}`)
+  },
+  adminPatient: (id) => request(`/api/admin/patients/${id}`),
+  adminPatientAppointments: (id, page = 0) =>
+    request(`/api/admin/patients/${id}/appointments?page=${page}&size=20`),
+  adminCancelAppointment: (id) => request(`/api/admin/appointments/${id}/cancel`, { method: 'POST' }),
   adminAuditLogs: (page = 0) => request(`/api/admin/audit-logs?page=${page}&size=50`),
   adminStats: () => request('/api/admin/stats'),
 }

@@ -114,7 +114,7 @@ public class AuthService {
             throw new UnauthorizedException("Invalid email or password");
         }
         User user = userDetailsService.loadEntityByEmail(request.getEmail());
-        if (emailVerificationService.needsEmailReverification(user)) {
+        if (user.getRole() == Role.CITIZEN && emailVerificationService.needsEmailReverification(user)) {
             return emailVerificationService.startLoginVerification(user);
         }
         auditLogService.log(user.getId(), "LOGIN", "User", user.getId());

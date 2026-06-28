@@ -13,7 +13,7 @@ export default function PhoneVerificationGate({ children }) {
   }
 
   const needsPhoneVerification =
-    user && profile?.mobile && profile.phoneVerified === false
+    user && user.role === 'CITIZEN' && profile?.mobile && profile.phoneVerified === false
 
   return (
     <>

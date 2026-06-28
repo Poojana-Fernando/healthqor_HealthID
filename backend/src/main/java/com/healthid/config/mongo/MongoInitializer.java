@@ -107,12 +107,25 @@ public class MongoInitializer implements ApplicationRunner {
     private Document doctorsValidator() {
         return new Document("$jsonSchema", new Document()
                 .append("bsonType", "object")
-                .append("required", java.util.List.of("userId", "specialization", "licenseNumber"))
+                .append("required", java.util.List.of(
+                        "userId", "nameTitle", "nic", "specialization", "hospital",
+                        "licenseNumber", "experienceYears", "maritalStatus", "createdAt", "updatedAt"))
                 .append("properties", new Document()
                         .append("userId", new Document("bsonType", "string"))
+                        .append("nameTitle", new Document("enum", java.util.List.of(
+                                "DR", "PROF", "MR", "MRS", "MISS")))
+                        .append("nic", new Document("bsonType", "binData"))
                         .append("specialization", new Document("bsonType", "string"))
+                        .append("hospital", new Document("bsonType", "string"))
                         .append("licenseNumber", new Document("bsonType", "string"))
-                        .append("available", new Document("bsonType", "bool"))));
+                        .append("experienceYears", new Document("bsonType", "int"))
+                        .append("maritalStatus", new Document("enum", java.util.List.of(
+                                "SINGLE", "MARRIED", "DIVORCED", "WIDOWED")))
+                        .append("verifiedByAdmin", new Document("bsonType", "bool"))
+                        .append("available", new Document("bsonType", "bool"))
+                        .append("deactivatedAt", new Document("bsonType", "date"))
+                        .append("createdAt", new Document("bsonType", "date"))
+                        .append("updatedAt", new Document("bsonType", "date"))));
     }
 
     private Document appointmentsValidator() {

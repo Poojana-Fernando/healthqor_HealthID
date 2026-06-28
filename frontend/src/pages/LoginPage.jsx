@@ -36,7 +36,7 @@ export default function LoginPage() {
         })
         return
       }
-      navigate('/profile')
+      navigate(res.role === 'ADMIN' ? '/admin' : '/profile')
     } catch (err) {
       setError(err.message)
     } finally {

@@ -9,6 +9,9 @@ public class SystemStatsResponse {
 
     private long totalUsers;
     private long totalDoctors;
+    private long totalPatients;
     private long appointmentsToday;
+    private long cancelledToday;
+    private long pendingDoctorVerifications;
     private long totalAuditLogs;
 }
