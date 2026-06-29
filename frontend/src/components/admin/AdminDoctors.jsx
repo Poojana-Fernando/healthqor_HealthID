@@ -5,10 +5,14 @@ import { api } from '../../api/client'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { Select } from '../ui/Select'
+import PaginationBar from '../ui/PaginationBar'
+
+const PAGE_SIZE = 20
 
 export default function AdminDoctors() {
   const navigate = useNavigate()
-  const [doctors, setDoctors] = useState({ content: [] })
+  const [doctors, setDoctors] = useState({ content: [], totalPages: 0, totalElements: 0, number: 0 })
+  const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
   const [specialization, setSpecialization] = useState('')
   const [verifiedFilter, setVerifiedFilter] = useState('')
@@ -27,13 +31,19 @@ export default function AdminDoctors() {
         verified: verifiedFilter === '' ? undefined : verifiedFilter === 'true',
         sortBy: sortBy === 'bookings' ? 'bookings' : undefined,
         sort,
+        page,
+        size: PAGE_SIZE,
       })
       setDoctors(res)
     } catch {
-      setDoctors({ content: [] })
+      setDoctors({ content: [], totalPages: 0, totalElements: 0, number: 0 })
     } finally {
       setLoading(false)
     }
+  }, [search, specialization, verifiedFilter, sortBy, page])
+
+  useEffect(() => {
+    setPage(0)
   }, [search, specialization, verifiedFilter, sortBy])
 
   useEffect(() => {
@@ -139,6 +149,14 @@ export default function AdminDoctors() {
               ))}
             </tbody>
           </table>
+          <PaginationBar
+            page={doctors.number ?? page}
+            totalPages={doctors.totalPages ?? 0}
+            totalElements={doctors.totalElements ?? 0}
+            pageSize={doctors.size ?? PAGE_SIZE}
+            onPageChange={setPage}
+            disabled={loading}
+          />
         </div>
       )}
 
