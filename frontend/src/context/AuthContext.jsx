@@ -73,7 +73,12 @@ export function AuthProvider({ children }) {
     return res
   }
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await api.logout()
+    } catch {
+      // Clear local state even if the API is unreachable
+    }
     setUser(null)
     setProfile(null)
   }

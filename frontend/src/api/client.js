@@ -71,6 +71,7 @@ export const api = {
   resendPhoneOtp: () => request('/api/auth/resend-phone-otp', { method: 'POST' }),
   verifyPhone: (data) => request('/api/auth/verify-phone', { method: 'POST', body: JSON.stringify(data) }),
   refresh: () => request('/api/auth/refresh', { method: 'POST' }),
+  logout: () => request('/api/auth/logout', { method: 'POST' }),
   getProfile: () => request('/api/profile/me'),
   updateProfile: (data) => request('/api/profile/me', { method: 'PUT', body: JSON.stringify(data) }),
   getVaccinations: () => request('/api/health-data/vaccinations'),

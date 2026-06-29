@@ -27,6 +27,7 @@ import com.healthid.exception.UnauthorizedException;
 import com.healthid.repository.HealthProfileRepository;
 import com.healthid.repository.UserRepository;
 import com.healthid.security.CustomUserDetailsService;
+import com.healthid.security.JwtFilter;
 import com.healthid.security.JwtUtil;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.Cookie;
@@ -298,6 +299,10 @@ public class AuthService {
         return user;
     }
 
+    public void logout(HttpServletResponse response) {
+        clearTokenCookies(response);
+    }
+
     public AuthResponse refresh(String refreshToken, HttpServletResponse response) {
         try {
             Claims claims = jwtUtil.parseClaims(refreshToken);
@@ -319,20 +324,25 @@ public class AuthService {
         String accessToken = jwtUtil.generateAccessToken(user.getId(), user.getEmail(), user.getRole());
         String refreshToken = jwtUtil.generateRefreshToken(user.getId(), user.getEmail(), user.getRole());
 
-        Cookie accessCookie = new Cookie(com.healthid.security.JwtFilter.ACCESS_TOKEN_COOKIE, accessToken);
-        accessCookie.setHttpOnly(true);
-        accessCookie.setSecure(false);
-        accessCookie.setPath("/");
-        accessCookie.setMaxAge(15 * 60);
-
-        Cookie refreshCookie = new Cookie(com.healthid.security.JwtFilter.REFRESH_TOKEN_COOKIE, refreshToken);
-        refreshCookie.setHttpOnly(true);
-        refreshCookie.setSecure(false);
-        refreshCookie.setPath("/");
-        refreshCookie.setMaxAge(7 * 24 * 60 * 60);
+        Cookie accessCookie = authCookie(JwtFilter.ACCESS_TOKEN_COOKIE, accessToken, 15 * 60);
+        Cookie refreshCookie = authCookie(JwtFilter.REFRESH_TOKEN_COOKIE, refreshToken, 7 * 24 * 60 * 60);
 
         response.addCookie(accessCookie);
         response.addCookie(refreshCookie);
+    }
+
+    private void clearTokenCookies(HttpServletResponse response) {
+        response.addCookie(authCookie(JwtFilter.ACCESS_TOKEN_COOKIE, "", 0));
+        response.addCookie(authCookie(JwtFilter.REFRESH_TOKEN_COOKIE, "", 0));
+    }
+
+    private Cookie authCookie(String name, String value, int maxAgeSeconds) {
+        Cookie cookie = new Cookie(name, value);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(false);
+        cookie.setPath("/");
+        cookie.setMaxAge(maxAgeSeconds);
+        return cookie;
     }
 
     private void ensureOAuthEmailVerified(User user) {

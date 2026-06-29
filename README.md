@@ -182,6 +182,7 @@ CACHE_TYPE=simple
 | POST | `/api/auth/reset-password` | Public — OTP or magic link + new password |
 | POST | `/api/auth/resend-password-reset` | Public |
 | POST | `/api/auth/google` | Public |
+| POST | `/api/auth/logout` | Public — clears HttpOnly JWT cookies |
 | POST | `/api/auth/send-phone-otp` | Authenticated — send SMS OTP to registered mobile |
 | POST | `/api/auth/resend-phone-otp` | Authenticated |
 | POST | `/api/auth/verify-phone` | Authenticated — body `{ "code": "123456" }` |

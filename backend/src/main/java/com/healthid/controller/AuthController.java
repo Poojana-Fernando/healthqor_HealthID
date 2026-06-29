@@ -99,6 +99,13 @@ public class AuthController {
         return ResponseEntity.ok(authService.refresh(refreshToken, response));
     }
 
+    @PostMapping("/logout")
+    @Operation(summary = "Sign out and clear auth cookies")
+    public ResponseEntity<Void> logout(HttpServletResponse response) {
+        authService.logout(response);
+        return ResponseEntity.noContent().build();
+    }
+
     private String extractCookie(HttpServletRequest request, String name) {
         if (request.getCookies() == null) return null;
         for (Cookie cookie : request.getCookies()) {

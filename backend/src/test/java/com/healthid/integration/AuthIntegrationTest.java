@@ -7,6 +7,7 @@ import com.healthid.dto.auth.ResendVerificationRequest;
 import com.healthid.dto.auth.VerifyEmailRequest;
 import com.healthid.entity.User;
 import com.healthid.repository.UserRepository;
+import com.healthid.security.JwtFilter;
 import com.healthid.service.email.CapturedEmailStore;
 import com.healthid.service.email.VerificationEmailPayload;
 import org.junit.jupiter.api.BeforeEach;
@@ -186,6 +187,45 @@ class AuthIntegrationTest {
     @Test
     void profileRequiresAuth() throws Exception {
         mockMvc.perform(get("/api/profile/me"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void logoutClearsCookiesAndRevokesAccess() throws Exception {
+        RegisterRequest register = sampleRegister("logout@healthid.lk");
+
+        MvcResult registerResult = mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(register)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String challengeId = objectMapper.readTree(registerResult.getResponse().getContentAsString())
+                .get("challengeId").asText();
+
+        VerifyEmailRequest verify = new VerifyEmailRequest();
+        verify.setChallengeId(challengeId);
+        verify.setCode(capturedEmailStore.getLast().otpCode());
+
+        MvcResult verifyResult = mockMvc.perform(post("/api/auth/verify-email")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(verify)))
+                .andExpect(status().isOk())
+                .andExpect(cookie().exists(JwtFilter.ACCESS_TOKEN_COOKIE))
+                .andReturn();
+
+        jakarta.servlet.http.Cookie accessCookie = verifyResult.getResponse().getCookie(JwtFilter.ACCESS_TOKEN_COOKIE);
+        jakarta.servlet.http.Cookie refreshCookie = verifyResult.getResponse().getCookie(JwtFilter.REFRESH_TOKEN_COOKIE);
+
+        mockMvc.perform(get("/api/profile/me").cookie(accessCookie))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/auth/logout").cookie(accessCookie, refreshCookie))
+                .andExpect(status().isNoContent())
+                .andExpect(cookie().maxAge(JwtFilter.ACCESS_TOKEN_COOKIE, 0))
+                .andExpect(cookie().maxAge(JwtFilter.REFRESH_TOKEN_COOKIE, 0));
+
+        mockMvc.perform(get("/api/profile/me").cookie(accessCookie))
                 .andExpect(status().isForbidden());
     }
 
