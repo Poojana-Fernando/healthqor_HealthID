@@ -194,6 +194,8 @@ CACHE_TYPE=simple
 | POST | `/api/appointments` | Authenticated |
 | GET | `/api/admin/users` | Admin |
 
+**CSRF:** State-changing requests (`POST`, `PUT`, `PATCH`, `DELETE`) require the `X-XSRF-TOKEN` header. Spring Security sets an `XSRF-TOKEN` cookie on the first GET; the React client reads it automatically.
+
 ---
 
 ## Running tests

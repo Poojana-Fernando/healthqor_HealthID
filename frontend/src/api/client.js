@@ -1,6 +1,20 @@
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
-const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH'])
+const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
+const CSRF_COOKIE = 'XSRF-TOKEN'
+const CSRF_HEADER = 'X-XSRF-TOKEN'
+
+function readCsrfToken() {
+  const prefix = `${CSRF_COOKIE}=`
+  const entry = document.cookie.split(';').map((c) => c.trim()).find((c) => c.startsWith(prefix))
+  if (!entry) return null
+  return decodeURIComponent(entry.slice(prefix.length))
+}
+
+async function ensureCsrfToken() {
+  if (readCsrfToken()) return
+  await fetch(`${API_BASE}/actuator/health`, { credentials: 'include' })
+}
 
 function buildFetchOptions(options = {}) {
   const method = (options.method || 'GET').toUpperCase()
@@ -8,6 +22,10 @@ function buildFetchOptions(options = {}) {
   let body = options.body
 
   if (BODY_METHODS.has(method)) {
+    const csrf = readCsrfToken()
+    if (csrf) {
+      headers[CSRF_HEADER] = csrf
+    }
     if (body === undefined) {
       body = '{}'
     }
@@ -34,6 +52,11 @@ function networkErrorMessage(error) {
 }
 
 async function request(path, options = {}) {
+  const method = (options.method || 'GET').toUpperCase()
+  if (BODY_METHODS.has(method)) {
+    await ensureCsrfToken()
+  }
+
   let res
   try {
     res = await fetch(`${API_BASE}${path}`, buildFetchOptions(options))

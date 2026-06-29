@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
@@ -61,7 +62,7 @@ class PhoneVerificationIntegrationTest {
                 .andExpect(jsonPath("$.phoneVerified").value(false))
                 .andExpect(jsonPath("$.mobile").value("+94771234567"));
 
-        mockMvc.perform(post("/api/auth/send-phone-otp").cookie(accessCookie))
+        mockMvc.perform(post("/api/auth/send-phone-otp").with(csrf()).cookie(accessCookie))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.maskedMobile").exists());
 
@@ -73,7 +74,7 @@ class PhoneVerificationIntegrationTest {
 
         mockMvc.perform(post("/api/auth/verify-phone")
                         .cookie(accessCookie)
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(verifyPhone)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.phoneVerified").value(true));
@@ -85,7 +86,7 @@ class PhoneVerificationIntegrationTest {
 
     @Test
     void sendPhoneOtpRequiresAuthentication() throws Exception {
-        mockMvc.perform(post("/api/auth/send-phone-otp"))
+        mockMvc.perform(post("/api/auth/send-phone-otp").with(csrf()))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -103,7 +104,7 @@ class PhoneVerificationIntegrationTest {
         register.setWeightKg(BigDecimal.valueOf(70));
 
         MvcResult registerResult = mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(register)))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -116,7 +117,7 @@ class PhoneVerificationIntegrationTest {
         verify.setCode(capturedEmailStore.getLast().otpCode());
 
         MvcResult verifyResult = mockMvc.perform(post("/api/auth/verify-email")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(verify)))
                 .andExpect(status().isOk())
                 .andExpect(cookie().exists(JwtFilter.ACCESS_TOKEN_COOKIE))
