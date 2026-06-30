@@ -9,6 +9,8 @@ import { api } from '../api/client'
 import HumanoidFigure from '../components/HumanoidFigure'
 import OrganDetailsCard from '../components/OrganDetailsCard'
 import Sparkline from '../components/Sparkline'
+import HealthIdLoadingIcon from '../components/ui/HealthIdLoadingIcon'
+import LoadingButton from '../components/ui/LoadingButton'
 import './ProfilePage.css'
 
 
@@ -416,7 +418,11 @@ export default function ProfilePage() {
 
 
   if (loading || !profile) {
-    return <div className="pe-loading">Loading profile...</div>
+    return (
+      <div className="pe-loading">
+        <HealthIdLoadingIcon size="lg" label="Loading profile" showLabel />
+      </div>
+    )
   }
 
   const heightDisplay = profile.heightCm ?? '—'
@@ -1078,9 +1084,9 @@ export default function ProfilePage() {
             {editError && <p style={{ color: '#f09595', fontSize: 13, margin: '8px 0' }}>{editError}</p>}
 
             <div className="pe-edit-actions mt-4">
-              <button type="button" onClick={saveProfile} disabled={saving} className="pe-edit-save">
-                {saving ? 'Saving...' : 'Save'}
-              </button>
+              <LoadingButton type="button" onClick={saveProfile} loading={saving} loadingLabel="Saving..." variant="enterprise">
+                Save
+              </LoadingButton>
               <button type="button" onClick={() => setEditOpen(false)} className="pe-edit-cancel">
                 Cancel
               </button>

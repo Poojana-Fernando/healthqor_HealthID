@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { startGoogleOAuth } from '../utils/googleAuth'
+import LoadingButton from '../components/ui/LoadingButton'
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -72,9 +73,9 @@ export default function LoginPage() {
           </div>
         </div>
         {error && <p className="text-red-400 text-sm">{error}</p>}
-        <button type="submit" disabled={loading} className="w-full bg-accent hover:bg-accent2 py-3 rounded-xl disabled:opacity-50">
-          {loading ? 'Logging in...' : 'Login'}
-        </button>
+        <LoadingButton type="submit" loading={loading} loadingLabel="Logging in..." size="full" className="font-medium">
+          Login
+        </LoadingButton>
       </form>
 
       <div className="flex items-center gap-4 my-6">

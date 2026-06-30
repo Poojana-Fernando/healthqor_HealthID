@@ -266,6 +266,7 @@ html, body {
 .pe-edit-btn {
   width: 100%;
   margin-top: auto;
+  flex-shrink: 0;
   background: var(--pe-accent);
   color: var(--pe-bg);
   border: none;
@@ -620,6 +621,9 @@ html, body {
   flex-direction: column;
   gap: 10px;
   margin-bottom: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .pe-vitals-title {
@@ -1255,8 +1259,10 @@ html, body {
 
 .pe-loading {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   min-height: calc(100vh - 72px);
   background: var(--pe-bg);
   color: rgba(255, 255, 255, 0.45);

@@ -1,4 +1,5 @@
 import { cn } from '../../lib/utils'
+import LoadingButton from './LoadingButton'
 
 const variants = {
   default: 'bg-accent text-navy hover:bg-accent2 font-semibold',
@@ -17,9 +18,28 @@ export function Button({
   size = 'default',
   type = 'button',
   disabled,
+  loading = false,
+  loadingLabel,
   children,
   ...props
 }) {
+  if (loading) {
+    return (
+      <LoadingButton
+        className={className}
+        variant={variant}
+        size={size}
+        type={type}
+        disabled={disabled}
+        loading
+        loadingLabel={loadingLabel}
+        {...props}
+      >
+        {children}
+      </LoadingButton>
+    )
+  }
+
   return (
     <button
       type={type}

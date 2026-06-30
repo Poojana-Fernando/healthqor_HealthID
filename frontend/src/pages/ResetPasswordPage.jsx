@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
+import LoadingButton from '../components/ui/LoadingButton'
 
 function passwordStrength(pw) {
   let score = 0
@@ -179,20 +180,30 @@ export default function ResetPasswordPage() {
         {error && <p className="text-red-400 text-sm">{error}</p>}
         {message && <p className="text-emerald-400 text-sm">{message}</p>}
 
-        <button type="submit" disabled={loading} className="w-full bg-accent hover:bg-accent2 py-3 rounded-xl disabled:opacity-50">
-          {loading ? 'Updating...' : isDoctorInvite ? 'Activate account' : 'Update password'}
-        </button>
+        <LoadingButton
+          type="submit"
+          loading={loading}
+          loadingLabel="Updating..."
+          size="full"
+          className="font-medium"
+        >
+          {isDoctorInvite ? 'Activate account' : 'Update password'}
+        </LoadingButton>
       </form>
 
       {!magicLinkMode && !isDoctorInvite && (
-        <button
+        <LoadingButton
           type="button"
           onClick={handleResend}
           disabled={resending || loading}
-          className="w-full mt-4 glass py-3 rounded-xl disabled:opacity-50"
+          loading={resending}
+          loadingLabel="Sending..."
+          variant="glass"
+          size="full"
+          className="mt-4"
         >
-          {resending ? 'Sending...' : 'Resend reset email'}
-        </button>
+          Resend reset email
+        </LoadingButton>
       )}
 
       <p className="text-center text-sm opacity-60 mt-6">

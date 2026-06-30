@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import HealthIdLoadingIcon from './ui/HealthIdLoadingIcon'
+import { getHumanoidQuality } from '../utils/devicePerformance'
 import {
   buildPlexusLines,
   computeTorsoFrame,
@@ -223,6 +225,10 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
     setLoadState('loading')
     setLoadError(null)
 
+    /* ── Adaptive quality (per device tier) ────────────── */
+    const quality = getHumanoidQuality()
+    const frameInterval = 1000 / quality.targetFps
+
     /* ── Scene ─────────────────────────────────────────── */
     const scene = new THREE.Scene()
     // scene.background = new THREE.Color(0x060e0a)
@@ -234,9 +240,9 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
     camera.lookAt(0, 0.1, 0)
 
     /* ── Renderer ──────────────────────────────────────── */
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' })
+    const renderer = new THREE.WebGLRenderer({ antialias: quality.antialias, alpha: true, powerPreference: quality.powerPreference })
     renderer.setSize(width, height)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, quality.pixelRatioCap))
     renderer.toneMapping = THREE.ACESFilmicToneMapping
     renderer.toneMappingExposure = 1.25
     renderer.domElement.style.display = 'block'
@@ -271,7 +277,12 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
     let organs = []
     let particleGeo = null
     let particlePoints = null
-    let hexMeshes = []
+    let hexInstanced = null
+    let hexMat = null
+    let hexPositions = []
+    let hexCurrentScale = 1.0
+    const hexDummy = new THREE.Object3D()
+    const localCamPos = new THREE.Vector3()
     let organLights = []
     let organGlassMeshes = []
     let cachedBox = null
@@ -279,6 +290,11 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
     let mouseMovedSinceLastRaycast = false
     let cursorState = 'default'
     let isPageVisible = document.visibilityState === 'visible'
+    let isInViewport = true
+    let lastRenderTime = 0
+    let skinSettled = false
+    let prevSkinTarget = false
+    const skinBaseRGB = getOrganMaterialRGB('SKIN_LIMBS')
     const disposables = []
 
     const onMouseMove = (e) => {
@@ -293,6 +309,14 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
       isPageVisible = document.visibilityState === 'visible'
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
+
+    // Pause the render loop when the viewer is scrolled off-screen — big GPU
+    // saving with no visual cost (it isn't visible), resumes when back in view.
+    const intersectionObserver = new IntersectionObserver(
+      (entries) => { isInViewport = entries[0]?.isIntersecting ?? true },
+      { threshold: 0.01 },
+    )
+    intersectionObserver.observe(container)
 
     /* ── Organ spatial classifier (unchanged) ──────────── */
     const getOrganFromPoint = (point, box) => {
@@ -372,9 +396,15 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
     /* ── Animation loop ────────────────────────────────── */
     const animate = () => {
       frame = requestAnimationFrame(animate)
-      if (!isPageVisible) return
-      const t = clock.getElapsedTime()
+      if (!isPageVisible || !isInViewport) return
+
       const now = performance.now()
+      // Frame-rate cap: keep the same animation, just skip redundant frames
+      // on weaker devices to cut GPU load.
+      if (now - lastRenderTime < frameInterval) return
+      lastRenderTime = now
+
+      const t = clock.getElapsedTime()
 
       // Continuous rotation
       humanoid.rotation.y = t * 0.22
@@ -441,26 +471,46 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
           light.intensity = THREE.MathUtils.lerp(light.intensity, currentTarget, 0.15)
         }
 
-        // Animate hex meshes based on hover/active organ
-        for (let i = 0, len = hexMeshes.length; i < len; i++) {
-          const { mesh, organ } = hexMeshes[i]
-          const isTarget = organ === currentTargetRegion
-          
+        // Animate hex markers (instanced — all SKIN_LIMBS). One draw call,
+        // one shared material; billboard every instance toward the camera.
+        if (hexInstanced && hexPositions.length) {
+          const isTarget = currentTargetRegion === 'SKIN_LIMBS'
           const targetScale = isTarget ? (1.35 + Math.sin(t * 8) * 0.15) : 1.0
           const targetOpacity = isTarget ? 0.35 : 0.12
-          
-          mesh.scale.setScalar(THREE.MathUtils.lerp(mesh.scale.x, targetScale, 0.15))
-          mesh.material.opacity = THREE.MathUtils.lerp(mesh.material.opacity, targetOpacity, 0.15)
-          mesh.lookAt(camera.position)
+
+          hexCurrentScale = THREE.MathUtils.lerp(hexCurrentScale, targetScale, 0.15)
+          hexMat.opacity = THREE.MathUtils.lerp(hexMat.opacity, targetOpacity, 0.15)
+
+          // Camera position in humanoid local space (humanoid rotates each frame)
+          humanoid.updateMatrixWorld()
+          localCamPos.copy(camera.position)
+          humanoid.worldToLocal(localCamPos)
+
+          for (let i = 0, len = hexPositions.length; i < len; i++) {
+            hexDummy.position.copy(hexPositions[i])
+            hexDummy.lookAt(localCamPos)
+            hexDummy.scale.setScalar(hexCurrentScale)
+            hexDummy.updateMatrix()
+            hexInstanced.setMatrixAt(i, hexDummy.matrix)
+          }
+          hexInstanced.instanceMatrix.needsUpdate = true
         }
 
         // Skin particle animation (body shell only — organs are glass meshes)
         const posAttr = particleGeo?.getAttribute('position')
         const colorAttr = particleGeo?.getAttribute('color')
-        if (posAttr && colorAttr && originals.length) {
+        const isSkinTarget = currentTargetRegion === 'SKIN_LIMBS'
+        if (isSkinTarget !== prevSkinTarget) {
+          skinSettled = false
+          prevSkinTarget = isSkinTarget
+        }
+        // Once idle particles have relaxed to their rest pose, stop iterating
+        // 3800 points every frame until skin is hovered again. (No visual change.)
+        if (posAttr && colorAttr && originals.length && !(skinSettled && !isSkinTarget)) {
           let posNeedsUpdate = false
           let colorNeedsUpdate = false
-          const isSkinTarget = currentTargetRegion === 'SKIN_LIMBS'
+          // Hoisted out of the loop — avoids allocating THREE.Color per point per frame.
+          const base = skinBaseRGB
           for (let i = 0; i < originals.length; i++) {
             const orig = originals[i]
             
@@ -492,7 +542,6 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
             const currG = colorAttr.getY(i)
             const currB = colorAttr.getZ(i)
             
-            const base = getOrganMaterialRGB('SKIN_LIMBS')
             let targetR = base.r
             let targetG = base.g
             let targetB = base.b
@@ -518,6 +567,9 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
           }
           if (colorNeedsUpdate) {
             colorAttr.needsUpdate = true
+          }
+          if (!posNeedsUpdate && !colorNeedsUpdate && !isSkinTarget) {
+            skinSettled = true
           }
         }
       }
@@ -578,22 +630,34 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
 
       const hexGeo = createHexGeometry(0.016)
       disposables.push(hexGeo)
-      const hexStep = Math.max(1, Math.floor(points.length / 600))
+      const hexStep = Math.max(1, Math.floor(points.length / quality.hexDivisor))
+      hexPositions = []
       for (let i = 0; i < points.length; i += hexStep) {
-        const mesh = new THREE.Mesh(hexGeo, new THREE.MeshBasicMaterial({
-          color: getOrganHexNumber('SKIN_LIMBS'),
-          transparent: true,
-          opacity: 0.2,
-          side: THREE.DoubleSide,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-        }))
-        mesh.renderOrder = 0
-        mesh.position.copy(points[i])
-        mesh.lookAt(camera.position)
-        humanoid.add(mesh)
-        hexMeshes.push({ mesh, organ: 'SKIN_LIMBS' })
+        hexPositions.push(points[i].clone())
       }
+
+      hexMat = new THREE.MeshBasicMaterial({
+        color: getOrganHexNumber('SKIN_LIMBS'),
+        transparent: true,
+        opacity: 0.2,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+      disposables.push(hexMat)
+
+      hexInstanced = new THREE.InstancedMesh(hexGeo, hexMat, hexPositions.length)
+      hexInstanced.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
+      hexInstanced.renderOrder = 0
+      for (let i = 0; i < hexPositions.length; i++) {
+        hexDummy.position.copy(hexPositions[i])
+        hexDummy.lookAt(camera.position)
+        hexDummy.scale.setScalar(1)
+        hexDummy.updateMatrix()
+        hexInstanced.setMatrixAt(i, hexDummy.matrix)
+      }
+      hexInstanced.instanceMatrix.needsUpdate = true
+      humanoid.add(hexInstanced)
     }
 
     const setupOrganLights = (meshEntries) => {
@@ -817,7 +881,7 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
         buildBodyShell(object, rawVerts)
 
         const normalized = normalizeMeshVertices(rawVerts, 3.6)
-        const bodySample = sampleVertices(normalized, 3800)
+        const bodySample = sampleVertices(normalized, quality.bodyParticles)
         const bodyBox = new THREE.Box3().setFromPoints(bodySample)
 
         const bodyPoints = bodySample.map((p) => p.clone())
@@ -863,7 +927,7 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
       camera.aspect = w / h
       camera.updateProjectionMatrix()
       renderer.setSize(w, h)
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, quality.pixelRatioCap))
     })
     resizeObserver.observe(container)
 
@@ -872,10 +936,11 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
       disposed = true
       cancelAnimationFrame(frame)
       resizeObserver.disconnect()
+      intersectionObserver.disconnect()
       document.removeEventListener('visibilitychange', onVisibilityChange)
       container.removeEventListener('mousemove', onMouseMove)
       container.removeEventListener('click', onCanvasClick)
-      hexMeshes.forEach(({ mesh }) => mesh.material?.dispose())
+      hexInstanced?.dispose()
       organGlassMeshes.forEach(({ group }) => {
         group.traverse((child) => {
           if (child.isMesh) child.geometry?.dispose()
@@ -921,8 +986,11 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
 
       {/* ══ LOADING / ERROR ══ */}
       {loadState === 'loading' && (
-        <div className="absolute inset-0 flex items-center justify-center text-accent2/60 text-sm z-30">
-          Loading {modelKey === 'FEMALE' ? 'female' : 'male'} scan mesh...
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-30 bg-[#060e0a]/30">
+          <HealthIdLoadingIcon size="lg" label="Loading scan mesh" />
+          <p className="text-accent2/70 text-xs font-mono uppercase tracking-wider">
+            Loading {modelKey === 'FEMALE' ? 'female' : 'male'} scan mesh...
+          </p>
         </div>
       )}
       {loadState === 'error' && (

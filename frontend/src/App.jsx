@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import LiveBackground from './components/LiveBackground'
 import ChatbotFab from './components/ChatbotFab'
+import Footer from './components/Footer'
 import HomePage from './pages/HomePage'
 import ProfilePage from './pages/ProfilePage'
 import SignupPage from './pages/SignupPage'
@@ -28,7 +29,7 @@ import PhoneVerificationGate from './components/phone/PhoneVerificationGate'
 
 export default function App() {
   return (
-    <div className="relative min-h-screen text-text">
+    <div className="relative min-h-screen text-text flex flex-col">
       <LiveBackground />
       <Navbar />
       <PhoneVerificationGate>
@@ -59,6 +60,29 @@ export default function App() {
         <Route path="/support" element={<SupportPage />} />
         </Routes>
       </PhoneVerificationGate>
+      <div className="flex-grow">
+        <PhoneVerificationGate>
+          <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
+          <Route path="/echanneling" element={<EChannelingPage />} />
+          <Route path="/admin" element={<AdminPage />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="doctors" element={<AdminDoctors />} />
+            <Route path="doctors/new" element={<AdminAddDoctorPage />} />
+            <Route path="patients" element={<AdminPatients />} />
+          </Route>
+          <Route path="/support" element={<SupportPage />} />
+          </Routes>
+        </PhoneVerificationGate>
+      </div>
+      <Footer />
       <ChatbotFab />
     </div>
   )

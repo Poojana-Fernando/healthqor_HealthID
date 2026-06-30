@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
+import LoadingButton from '../components/ui/LoadingButton'
 
 const RESET_SENT_MESSAGE =
   'If an account with that email exists, we sent password reset instructions.'
@@ -44,9 +45,9 @@ export default function ForgotPasswordPage() {
           />
         </div>
         {error && <p className="text-red-400 text-sm">{error}</p>}
-        <button type="submit" disabled={loading} className="w-full bg-accent hover:bg-accent2 py-3 rounded-xl disabled:opacity-50">
-          {loading ? 'Sending...' : 'Send reset instructions'}
-        </button>
+        <LoadingButton type="submit" loading={loading} loadingLabel="Sending..." size="full" className="font-medium">
+          Send reset instructions
+        </LoadingButton>
       </form>
 
       <p className="text-center text-sm opacity-60 mt-6">

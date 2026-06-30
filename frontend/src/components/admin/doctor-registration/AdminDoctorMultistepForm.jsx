@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Check } from 'lucide-react'
 import { api } from '../../../api/client'
 import { ADMIN_DOCTOR_STEPS } from '../../../constants/adminDoctorConstants'
 import {
@@ -205,23 +205,16 @@ export default function AdminDoctorMultistepForm({ onError }) {
               type="button"
               onClick={currentStep === ADMIN_DOCTOR_STEPS.length - 1 ? handleSubmit : nextStep}
               disabled={isSubmitting}
+              loading={isSubmitting}
+              loadingLabel="Creating..."
               className={cn('flex items-center gap-1')}
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Creating...
-                </>
+              {currentStep === ADMIN_DOCTOR_STEPS.length - 1 ? 'Create & Send Invite' : 'Next'}
+              {!isSubmitting && (currentStep === ADMIN_DOCTOR_STEPS.length - 1 ? (
+                <Check className="h-4 w-4" />
               ) : (
-                <>
-                  {currentStep === ADMIN_DOCTOR_STEPS.length - 1 ? 'Create & Send Invite' : 'Next'}
-                  {currentStep === ADMIN_DOCTOR_STEPS.length - 1 ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
-                </>
-              )}
+                <ChevronRight className="h-4 w-4" />
+              ))}
             </Button>
           </CardFooter>
         </Card>

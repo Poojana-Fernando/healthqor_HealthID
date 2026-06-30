@@ -403,3 +403,86 @@ main:not([class]) section:nth-of-type(2) .grid > div:nth-child(2) {
   0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
   50% { box-shadow: 0 0 12px 3px rgba(239, 68, 68, 0.25); }
 }
+
+/* ── Health ID logo loading icon ── */
+.hq-logo-loader {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.hq-logo-loader__orbit {
+  position: absolute;
+  inset: -10%;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: #34d399;
+  border-right-color: rgba(52, 211, 153, 0.35);
+  animation: hq-logo-orbit 1.05s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+.hq-logo-loader__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(52, 211, 153, 0.28);
+  animation: hq-logo-ring-pulse 1.5s ease-in-out infinite;
+}
+
+.hq-logo-loader__mark {
+  position: relative;
+  z-index: 1;
+  width: 68%;
+  height: 68%;
+}
+
+.hq-logo-mark__shield {
+  animation: hq-logo-shield-glow 1.8s ease-in-out infinite;
+}
+
+.hq-logo-mark__ecg {
+  stroke-dasharray: 120;
+  animation: ecg-draw 1.15s ease-in-out infinite;
+}
+
+.hq-logo-loader__label {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(94, 234, 212, 0.75);
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+@keyframes hq-logo-orbit {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes hq-logo-ring-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.45; }
+  50% { transform: scale(1.06); opacity: 0.95; }
+}
+
+@keyframes hq-logo-shield-glow {
+  0%, 100% { filter: drop-shadow(0 0 2px rgba(52, 211, 153, 0.35)); }
+  50% { filter: drop-shadow(0 0 6px rgba(52, 211, 153, 0.75)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hq-logo-loader__orbit,
+  .hq-logo-loader__ring,
+  .hq-logo-mark__shield,
+  .hq-logo-mark__ecg {
+    animation: none;
+  }
+  .hq-logo-loader__orbit {
+    border-top-color: #34d399;
+    transform: rotate(45deg);
+  }
+}

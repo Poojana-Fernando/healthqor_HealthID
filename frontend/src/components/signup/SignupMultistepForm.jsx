@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Check } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { SIGNUP_STEPS } from '../../constants/signupConstants'
 import { DEFAULT_PHONE_COUNTRY } from '../../constants/phoneCountries'
@@ -239,23 +239,16 @@ export default function SignupMultistepForm({ onError }) {
                   currentStep === SIGNUP_STEPS.length - 1 ? handleSubmit : nextStep
                 }
                 disabled={isSubmitting}
+                loading={isSubmitting}
+                loadingLabel="Creating..."
                 className={cn('flex items-center gap-1')}
               >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Creating...
-                  </>
+                {currentStep === SIGNUP_STEPS.length - 1 ? 'Create Health ID' : 'Next'}
+                {!isSubmitting && (currentStep === SIGNUP_STEPS.length - 1 ? (
+                  <Check className="h-4 w-4" />
                 ) : (
-                  <>
-                    {currentStep === SIGNUP_STEPS.length - 1 ? 'Create Health ID' : 'Next'}
-                    {currentStep === SIGNUP_STEPS.length - 1 ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4" />
-                    )}
-                  </>
-                )}
+                  <ChevronRight className="h-4 w-4" />
+                ))}
               </Button>
             </motion.div>
           </CardFooter>
