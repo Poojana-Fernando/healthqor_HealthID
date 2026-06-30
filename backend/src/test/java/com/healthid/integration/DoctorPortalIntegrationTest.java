@@ -156,6 +156,14 @@ class DoctorPortalIntegrationTest {
                         .content(objectMapper.writeValueAsString(confirm)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CONFIRMED"));
+
+        var confirmationEmail = capturedEmailStore.getLastAppointmentConfirmation();
+        assertThat(confirmationEmail).isNotNull();
+        assertThat(confirmationEmail.toEmail()).isEqualTo("patient.portal@healthid.lk");
+        assertThat(confirmationEmail.patientName()).isEqualTo("Patient Portal Test");
+        assertThat(confirmationEmail.doctorName()).isEqualTo("Dr. Dr Portal Test");
+        assertThat(confirmationEmail.referenceNumber()).isEqualTo(appointmentId.substring(0, 8).toUpperCase());
+        assertThat(confirmationEmail.scheduledAtFormatted()).contains("Sri Lanka Time");
     }
 
     @Test

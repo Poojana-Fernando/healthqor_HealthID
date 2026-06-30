@@ -27,6 +27,7 @@ public class DoctorPortalService {
     private final DoctorScheduleRepository doctorScheduleRepository;
     private final AuditLogService auditLogService;
     private final EncryptionService encryptionService;
+    private final AppointmentConfirmationService appointmentConfirmationService;
 
     public DoctorPortalService(
             UserRepository userRepository,
@@ -35,7 +36,8 @@ public class DoctorPortalService {
             HealthProfileRepository healthProfileRepository,
             DoctorScheduleRepository doctorScheduleRepository,
             AuditLogService auditLogService,
-            EncryptionService encryptionService) {
+            EncryptionService encryptionService,
+            AppointmentConfirmationService appointmentConfirmationService) {
         this.userRepository = userRepository;
         this.doctorRepository = doctorRepository;
         this.appointmentRepository = appointmentRepository;
@@ -43,6 +45,7 @@ public class DoctorPortalService {
         this.doctorScheduleRepository = doctorScheduleRepository;
         this.auditLogService = auditLogService;
         this.encryptionService = encryptionService;
+        this.appointmentConfirmationService = appointmentConfirmationService;
     }
 
     @Transactional(readOnly = true)
@@ -101,8 +104,13 @@ public class DoctorPortalService {
         Appointment appointment = requireOwnedAppointment(doctor, appointmentId);
 
         validateStatusTransition(appointment.getStatus(), request.getStatus());
+        AppointmentStatus previousStatus = appointment.getStatus();
         appointment.setStatus(request.getStatus());
         appointmentRepository.save(appointment);
+
+        if (previousStatus != AppointmentStatus.CONFIRMED && request.getStatus() == AppointmentStatus.CONFIRMED) {
+            appointmentConfirmationService.sendDoctorConfirmationReceipt(appointment, doctor);
+        }
 
         String action = switch (request.getStatus()) {
             case CONFIRMED -> "DOCTOR_CONFIRM_APPOINTMENT";
