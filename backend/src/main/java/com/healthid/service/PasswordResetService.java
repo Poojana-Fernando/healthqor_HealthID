@@ -29,6 +29,7 @@ public class PasswordResetService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final AuditLogService auditLogService;
+    private final DoctorLoginIdentifierResolver doctorLoginIdentifierResolver;
     private final String verificationPepper;
     private final String frontendOrigin;
     private final int otpExpiryMinutes;
@@ -41,6 +42,7 @@ public class PasswordResetService {
             PasswordEncoder passwordEncoder,
             EmailService emailService,
             AuditLogService auditLogService,
+            DoctorLoginIdentifierResolver doctorLoginIdentifierResolver,
             @Value("${jwt.secret}") String verificationPepper,
             @Value("${frontend.origin}") String frontendOrigin,
             @Value("${email.otp-expiry-minutes}") int otpExpiryMinutes,
@@ -51,6 +53,7 @@ public class PasswordResetService {
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.auditLogService = auditLogService;
+        this.doctorLoginIdentifierResolver = doctorLoginIdentifierResolver;
         this.verificationPepper = verificationPepper;
         this.frontendOrigin = frontendOrigin;
         this.otpExpiryMinutes = otpExpiryMinutes;
@@ -61,6 +64,16 @@ public class PasswordResetService {
     @Transactional
     public ForgotPasswordResponse requestReset(String email) {
         userRepository.findByEmail(email).ifPresent(user -> {
+            if (user.getPasswordHash() != null && !user.getPasswordHash().isBlank()) {
+                createAndSendChallenge(user);
+            }
+        });
+        return ForgotPasswordResponse.generic();
+    }
+
+    @Transactional
+    public ForgotPasswordResponse requestDoctorReset(String identifier) {
+        doctorLoginIdentifierResolver.resolveDoctorUser(identifier).ifPresent(user -> {
             if (user.getPasswordHash() != null && !user.getPasswordHash().isBlank()) {
                 createAndSendChallenge(user);
             }

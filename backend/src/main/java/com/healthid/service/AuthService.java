@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.healthid.dto.auth.AuthResultResponse;
 import com.healthid.dto.auth.AuthResponse;
+import com.healthid.dto.auth.DoctorForgotPasswordRequest;
+import com.healthid.dto.auth.DoctorLoginRequest;
 import com.healthid.dto.auth.ForgotPasswordRequest;
 import com.healthid.dto.auth.ForgotPasswordResponse;
 import com.healthid.dto.auth.GoogleAuthRequest;
@@ -63,6 +65,7 @@ public class AuthService {
     private final EmailVerificationService emailVerificationService;
     private final PasswordResetService passwordResetService;
     private final PhoneVerificationService phoneVerificationService;
+    private final DoctorLoginIdentifierResolver doctorLoginIdentifierResolver;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -87,7 +90,8 @@ public class AuthService {
             AuditLogService auditLogService,
             EmailVerificationService emailVerificationService,
             PasswordResetService passwordResetService,
-            PhoneVerificationService phoneVerificationService) {
+            PhoneVerificationService phoneVerificationService,
+            DoctorLoginIdentifierResolver doctorLoginIdentifierResolver) {
         this.userRepository = userRepository;
         this.healthProfileRepository = healthProfileRepository;
         this.passwordEncoder = passwordEncoder;
@@ -100,6 +104,7 @@ public class AuthService {
         this.emailVerificationService = emailVerificationService;
         this.passwordResetService = passwordResetService;
         this.phoneVerificationService = phoneVerificationService;
+        this.doctorLoginIdentifierResolver = doctorLoginIdentifierResolver;
     }
 
     public AuthResultResponse register(RegisterRequest request, HttpServletResponse response) {
@@ -123,6 +128,21 @@ public class AuthService {
         return AuthResultResponse.fromAuth(toAuthResponse(user));
     }
 
+    public AuthResultResponse doctorLogin(DoctorLoginRequest request, HttpServletResponse response) {
+        User user = doctorLoginIdentifierResolver.resolveDoctorUser(request.getIdentifier())
+                .orElseThrow(() -> new UnauthorizedException("Invalid email, SLMC number, or password"));
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(user.getEmail(), request.getPassword())
+            );
+        } catch (Exception e) {
+            throw new UnauthorizedException("Invalid email, SLMC number, or password");
+        }
+        auditLogService.log(user.getId(), "LOGIN", "User", user.getId());
+        setTokenCookies(user, response);
+        return AuthResultResponse.fromAuth(toAuthResponse(user));
+    }
+
     public AuthResultResponse verifyEmail(VerifyEmailRequest request, HttpServletResponse response) {
         VerificationResult result = emailVerificationService.verify(request);
         if (result.purpose() == VerificationPurpose.LOGIN) {
@@ -138,6 +158,10 @@ public class AuthService {
 
     public ForgotPasswordResponse forgotPassword(ForgotPasswordRequest request) {
         return passwordResetService.requestReset(request.getEmail());
+    }
+
+    public ForgotPasswordResponse doctorForgotPassword(DoctorForgotPasswordRequest request) {
+        return passwordResetService.requestDoctorReset(request.getIdentifier());
     }
 
     public ResetPasswordResponse resetPassword(ResetPasswordRequest request) {

@@ -17,6 +17,8 @@ export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams()
 
   const initialState = location.state || {}
+  const returnTo = initialState.returnTo || (searchParams.get('doctor') === '1' ? '/doctor/login' : '/login')
+  const isDoctorPortal = initialState.doctorPortal || searchParams.get('doctor') === '1'
   const [email, setEmail] = useState(initialState.email || '')
   const [challengeId, setChallengeId] = useState('')
   const [code, setCode] = useState('')
@@ -70,7 +72,7 @@ export default function ResetPasswordPage() {
 
       const res = await api.resetPassword(payload)
       setMessage(res.message || 'Password updated successfully. Please log in.')
-      setTimeout(() => navigate('/login'), 1500)
+      setTimeout(() => navigate(returnTo), 1500)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -194,7 +196,9 @@ export default function ResetPasswordPage() {
       )}
 
       <p className="text-center text-sm opacity-60 mt-6">
-        <Link to="/login" className="text-accent2">Back to login</Link>
+        <Link to={returnTo} className="text-accent2">
+          {isDoctorPortal ? 'Back to doctor login' : 'Back to login'}
+        </Link>
       </p>
     </main>
   )

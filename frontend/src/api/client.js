@@ -84,9 +84,11 @@ async function request(path, options = {}) {
 export const api = {
   register: (data) => request('/api/auth/register', { method: 'POST', body: JSON.stringify(data) }),
   login: (data) => request('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+  doctorLogin: (data) => request('/api/auth/doctor/login', { method: 'POST', body: JSON.stringify(data) }),
   verifyEmail: (data) => request('/api/auth/verify-email', { method: 'POST', body: JSON.stringify(data) }),
   resendVerification: (data) => request('/api/auth/resend-verification', { method: 'POST', body: JSON.stringify(data) }),
   forgotPassword: (data) => request('/api/auth/forgot-password', { method: 'POST', body: JSON.stringify(data) }),
+  doctorForgotPassword: (data) => request('/api/auth/doctor/forgot-password', { method: 'POST', body: JSON.stringify(data) }),
   resetPassword: (data) => request('/api/auth/reset-password', { method: 'POST', body: JSON.stringify(data) }),
   resendPasswordReset: (data) => request('/api/auth/resend-password-reset', { method: 'POST', body: JSON.stringify(data) }),
   googleAuth: (data) => request('/api/auth/google', { method: 'POST', body: JSON.stringify(data) }),
@@ -161,4 +163,24 @@ export const api = {
   adminCancelAppointment: (id) => request(`/api/admin/appointments/${id}/cancel`, { method: 'POST' }),
   adminAuditLogs: (page = 0) => request(`/api/admin/audit-logs?page=${page}&size=50`),
   adminStats: () => request('/api/admin/stats'),
+  doctorMe: () => request('/api/doctor/me'),
+  doctorUpdateProfile: (data) => request('/api/doctor/me', { method: 'PUT', body: JSON.stringify(data) }),
+  doctorSetAvailability: (data) => request('/api/doctor/me/availability', { method: 'PATCH', body: JSON.stringify(data) }),
+  doctorStats: () => request('/api/doctor/stats'),
+  doctorAppointments: ({ status, from, to, page = 0, size = 20 } = {}) => {
+    const params = new URLSearchParams({ page, size })
+    if (status) params.set('status', status)
+    if (from) params.set('from', from)
+    if (to) params.set('to', to)
+    return request(`/api/doctor/appointments?${params}`)
+  },
+  doctorAppointment: (id) => request(`/api/doctor/appointments/${id}`),
+  doctorUpdateAppointmentStatus: (id, data) =>
+    request(`/api/doctor/appointments/${id}/status`, { method: 'PATCH', body: JSON.stringify(data) }),
+  doctorSchedule: () => request('/api/doctor/schedule'),
+  doctorUpdateSchedule: (data) => request('/api/doctor/schedule', { method: 'PUT', body: JSON.stringify(data) }),
+  doctorSlots: (doctorId, from, to) => {
+    const params = new URLSearchParams({ from, to })
+    return request(`/api/doctors/${doctorId}/slots?${params}`)
+  },
 }

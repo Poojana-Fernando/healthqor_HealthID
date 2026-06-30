@@ -7,6 +7,8 @@ export default function EChannelingPage() {
   const [doctors, setDoctors] = useState([])
   const [filters, setFilters] = useState({ specialty: '', location: '', available: true, minRating: '' })
   const [selectedDoctor, setSelectedDoctor] = useState(null)
+  const [slots, setSlots] = useState([])
+  const [slotsLoading, setSlotsLoading] = useState(false)
   const [slot, setSlot] = useState('')
   const [notes, setNotes] = useState('')
   const [confirmation, setConfirmation] = useState(null)
@@ -22,6 +24,23 @@ export default function EChannelingPage() {
   }
 
   useEffect(() => { search() }, [])
+
+  useEffect(() => {
+    if (!selectedDoctor) {
+      setSlots([])
+      setSlot('')
+      return
+    }
+    setSlotsLoading(true)
+    const from = new Date()
+    from.setHours(0, 0, 0, 0)
+    const to = new Date(from)
+    to.setDate(to.getDate() + 7)
+    api.doctorSlots(selectedDoctor.id, from.toISOString(), to.toISOString())
+      .then(setSlots)
+      .catch(() => setSlots([]))
+      .finally(() => setSlotsLoading(false))
+  }, [selectedDoctor])
 
   const book = async () => {
     if (!user || !selectedDoctor || !slot) return
@@ -39,21 +58,6 @@ export default function EChannelingPage() {
     } finally {
       setLoading(false)
     }
-  }
-
-  const timeSlots = () => {
-    const slots = []
-    const base = new Date()
-    base.setHours(9, 0, 0, 0)
-    for (let d = 0; d < 7; d++) {
-      for (let h = 9; h < 17; h++) {
-        const dt = new Date(base)
-        dt.setDate(dt.getDate() + d)
-        dt.setHours(h)
-        slots.push(dt)
-      }
-    }
-    return slots
   }
 
   return (
@@ -118,18 +122,25 @@ export default function EChannelingPage() {
             <h2 className="text-xl font-bold mb-4">Book with {selectedDoctor.name}</h2>
             {!user && <p className="text-red-400 text-sm mb-4">Please login to book appointments.</p>}
             <label className="text-xs text-accent2 block mb-2">Select Time Slot</label>
-            <select
-              value={slot}
-              onChange={(e) => setSlot(e.target.value)}
-              className="w-full bg-navy/50 border border-border rounded-lg px-3 py-2 mb-4"
-            >
-              <option value="">Choose a slot</option>
-              {timeSlots().map((dt) => (
-                <option key={dt.toISOString()} value={dt.toISOString()}>
-                  {dt.toLocaleString()}
-                </option>
-              ))}
-            </select>
+            {slotsLoading ? (
+              <p className="text-sm text-white/50 mb-4">Loading available slots...</p>
+            ) : (
+              <select
+                value={slot}
+                onChange={(e) => setSlot(e.target.value)}
+                className="w-full bg-navy/50 border border-border rounded-lg px-3 py-2 mb-4"
+              >
+                <option value="">Choose a slot</option>
+                {slots.map((s) => (
+                  <option key={s.scheduledAt} value={s.scheduledAt}>
+                    {new Date(s.scheduledAt).toLocaleString()}
+                  </option>
+                ))}
+              </select>
+            )}
+            {!slotsLoading && slots.length === 0 && (
+              <p className="text-xs text-white/50 mb-4">No slots available. The doctor may need to set their weekly schedule.</p>
+            )}
             <textarea
               placeholder="Notes (optional)"
               value={notes}

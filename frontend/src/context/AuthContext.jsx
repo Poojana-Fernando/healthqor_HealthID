@@ -47,6 +47,13 @@ export function AuthProvider({ children }) {
     return res
   }
 
+  const doctorLogin = async (identifier, password) => {
+    const res = await api.doctorLogin({ identifier, password })
+    applyAuthResult(setUser, res)
+    await refreshProfile()
+    return res
+  }
+
   const register = async (data) => {
     const res = await api.register(data)
     if (res.requiresVerification) {
@@ -89,6 +96,7 @@ export function AuthProvider({ children }) {
       profile,
       loading,
       login,
+      doctorLogin,
       register,
       verifyEmail,
       resendVerification,
