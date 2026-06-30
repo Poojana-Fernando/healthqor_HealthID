@@ -613,7 +613,7 @@ export default function HumanoidFigure({ gender = 'MALE', onRegionClick, onRegio
         transparent: true,
         opacity: 1.0,
         blending: THREE.AdditiveBlending,
-        depthWrite: true,
+        depthWrite: false,
         sizeAttenuation: true,
       })
       particlePoints = new THREE.Points(particleGeo, pointsMat)
