@@ -7,6 +7,7 @@ import Footer from './components/Footer'
 
 import HomePage from './pages/HomePage'
 import ProfilePage from './pages/ProfilePage'
+import HealthcareFacilitiesPage from './pages/HealthcareFacilitiesPage'
 import SignupPage from './pages/SignupPage'
 import LoginPage from './pages/LoginPage'
 import EChannelingPage from './pages/EChannelingPage'
@@ -48,6 +49,7 @@ export default function App() {
             {/* Public Routes */}
             <Route path="/" element={<HomePage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/find-care" element={<HealthcareFacilitiesPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
