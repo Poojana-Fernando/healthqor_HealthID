@@ -27,6 +27,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -65,7 +66,7 @@ class PasswordResetIntegrationTest {
         forgot.setEmail("resetuser@healthid.lk");
 
         mockMvc.perform(post("/api/auth/forgot-password")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(forgot)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
@@ -79,7 +80,7 @@ class PasswordResetIntegrationTest {
         reset.setNewPassword("newpassword456");
 
         mockMvc.perform(post("/api/auth/reset-password")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(reset)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
@@ -88,7 +89,7 @@ class PasswordResetIntegrationTest {
         oldLogin.setEmail("resetuser@healthid.lk");
         oldLogin.setPassword("oldpassword123");
         mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(oldLogin)))
                 .andExpect(status().isUnauthorized());
 
@@ -96,7 +97,7 @@ class PasswordResetIntegrationTest {
         newLogin.setEmail("resetuser@healthid.lk");
         newLogin.setPassword("newpassword456");
         mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(newLogin)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.requiresVerification").value(false));
@@ -109,7 +110,7 @@ class PasswordResetIntegrationTest {
         ForgotPasswordRequest forgot = new ForgotPasswordRequest();
         forgot.setEmail("magicreset@healthid.lk");
         mockMvc.perform(post("/api/auth/forgot-password")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(forgot)))
                 .andExpect(status().isOk());
 
@@ -123,7 +124,7 @@ class PasswordResetIntegrationTest {
         reset.setNewPassword("magicnewpass99");
 
         mockMvc.perform(post("/api/auth/reset-password")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(reset)))
                 .andExpect(status().isOk());
     }
@@ -146,7 +147,7 @@ class PasswordResetIntegrationTest {
         forgot.setEmail("oauthonly@healthid.lk");
 
         mockMvc.perform(post("/api/auth/forgot-password")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(forgot)))
                 .andExpect(status().isOk());
 
@@ -160,7 +161,7 @@ class PasswordResetIntegrationTest {
         ForgotPasswordRequest forgot = new ForgotPasswordRequest();
         forgot.setEmail("resendreset@healthid.lk");
         mockMvc.perform(post("/api/auth/forgot-password")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(forgot)))
                 .andExpect(status().isOk());
 
@@ -170,7 +171,7 @@ class PasswordResetIntegrationTest {
         resend.setEmail("resendreset@healthid.lk");
 
         mockMvc.perform(post("/api/auth/resend-password-reset")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(resend)))
                 .andExpect(status().isOk());
 
@@ -192,7 +193,7 @@ class PasswordResetIntegrationTest {
         register.setWeightKg(BigDecimal.valueOf(70));
 
         MvcResult registerResult = mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(register)))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -204,7 +205,7 @@ class PasswordResetIntegrationTest {
         verify.setCode(capturedEmailStore.getLast().otpCode());
 
         mockMvc.perform(post("/api/auth/verify-email")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(verify)))
                 .andExpect(status().isOk());
 

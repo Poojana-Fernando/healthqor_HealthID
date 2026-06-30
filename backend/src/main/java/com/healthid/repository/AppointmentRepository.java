@@ -28,4 +28,15 @@ public interface AppointmentRepository extends MongoRepository<Appointment, Stri
     long countByStatusAndCreatedAtBetween(AppointmentStatus status, Instant start, Instant end);
 
     void deleteByPatientId(String patientId);
+
+    boolean existsByDoctorIdAndScheduledAtAndStatusIn(
+            String doctorId, Instant scheduledAt, List<AppointmentStatus> statuses);
+
+    List<Appointment> findByDoctorIdAndScheduledAtBetweenAndStatusIn(
+            String doctorId, Instant from, Instant to, List<AppointmentStatus> statuses);
+
+    long countByDoctorIdAndStatusAndScheduledAtBetween(
+            String doctorId, AppointmentStatus status, Instant start, Instant end);
+
+    long countByDoctorIdAndStatus(String doctorId, AppointmentStatus status);
 }

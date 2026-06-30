@@ -35,6 +35,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -84,7 +85,7 @@ class AdminIntegrationTest {
 
         MvcResult createResult = mockMvc.perform(post("/api/admin/doctors")
                         .cookie(adminCookie)
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("dr.admin@healthid.lk"))
@@ -99,6 +100,7 @@ class AdminIntegrationTest {
                 .andExpect(jsonPath("$.content[0].id").exists());
 
         mockMvc.perform(post("/api/admin/doctors/" + doctorId + "/verify?approved=true")
+                        .with(csrf())
                         .cookie(adminCookie))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("verified"));
@@ -118,7 +120,7 @@ class AdminIntegrationTest {
         AdminCreateDoctorRequest doctorRequest = buildDoctorRequest("dr.book@healthid.lk", "SLMC-002");
         MvcResult doctorResult = mockMvc.perform(post("/api/admin/doctors")
                         .cookie(adminCookie)
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(doctorRequest)))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -126,6 +128,7 @@ class AdminIntegrationTest {
                 .get("id").asText();
 
         mockMvc.perform(post("/api/admin/doctors/" + doctorId + "/verify?approved=true")
+                        .with(csrf())
                         .cookie(adminCookie))
                 .andExpect(status().isOk());
 
@@ -138,7 +141,7 @@ class AdminIntegrationTest {
 
         MvcResult bookResult = mockMvc.perform(post("/api/appointments")
                         .cookie(patientCookie)
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(appointment)))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -147,6 +150,7 @@ class AdminIntegrationTest {
                 .get("id").asText();
 
         mockMvc.perform(post("/api/admin/appointments/" + appointmentId + "/cancel")
+                        .with(csrf())
                         .cookie(adminCookie))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
@@ -162,7 +166,7 @@ class AdminIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("delete.me@healthid.lk"));
 
-        mockMvc.perform(delete("/api/admin/patients/" + patient.getId()).cookie(adminCookie))
+        mockMvc.perform(delete("/api/admin/patients/" + patient.getId()).with(csrf()).cookie(adminCookie))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("deleted"));
 
@@ -207,7 +211,7 @@ class AdminIntegrationTest {
         login.setPassword("adminpass123");
 
         MvcResult result = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(login)))
                 .andExpect(status().isOk())
                 .andExpect(cookie().exists(JwtFilter.ACCESS_TOKEN_COOKIE))
@@ -253,7 +257,7 @@ class AdminIntegrationTest {
         register.setWeightKg(BigDecimal.valueOf(65));
 
         MvcResult registerResult = mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(register)))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -266,7 +270,7 @@ class AdminIntegrationTest {
         verify.setCode(capturedEmailStore.getLast().otpCode());
 
         MvcResult verifyResult = mockMvc.perform(post("/api/auth/verify-email")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(verify)))
                 .andExpect(status().isOk())
                 .andExpect(cookie().exists(JwtFilter.ACCESS_TOKEN_COOKIE))

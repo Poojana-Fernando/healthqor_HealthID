@@ -36,6 +36,14 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(request, response));
     }
 
+    @PostMapping("/doctor/login")
+    @Operation(summary = "Doctor login with email or SLMC license number and password")
+    public ResponseEntity<AuthResultResponse> doctorLogin(
+            @Valid @RequestBody DoctorLoginRequest request,
+            HttpServletResponse response) {
+        return ResponseEntity.ok(authService.doctorLogin(request, response));
+    }
+
     @PostMapping("/verify-email")
     @Operation(summary = "Verify email with OTP or magic link token")
     public ResponseEntity<AuthResultResponse> verifyEmail(@Valid @RequestBody VerifyEmailRequest request, HttpServletResponse response) {
@@ -52,6 +60,13 @@ public class AuthController {
     @Operation(summary = "Request a password reset email")
     public ResponseEntity<ForgotPasswordResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         return ResponseEntity.ok(authService.forgotPassword(request));
+    }
+
+    @PostMapping("/doctor/forgot-password")
+    @Operation(summary = "Request a password reset email for a doctor account using email or SLMC license number")
+    public ResponseEntity<ForgotPasswordResponse> doctorForgotPassword(
+            @Valid @RequestBody DoctorForgotPasswordRequest request) {
+        return ResponseEntity.ok(authService.doctorForgotPassword(request));
     }
 
     @PostMapping("/reset-password")
@@ -97,6 +112,13 @@ public class AuthController {
     public ResponseEntity<AuthResponse> refresh(HttpServletRequest request, HttpServletResponse response) {
         String refreshToken = extractCookie(request, JwtFilter.REFRESH_TOKEN_COOKIE);
         return ResponseEntity.ok(authService.refresh(refreshToken, response));
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Sign out and clear auth cookies")
+    public ResponseEntity<Void> logout(HttpServletResponse response) {
+        authService.logout(response);
+        return ResponseEntity.noContent().build();
     }
 
     private String extractCookie(HttpServletRequest request, String name) {

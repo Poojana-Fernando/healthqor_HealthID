@@ -29,6 +29,8 @@ healthid/
 │   ├── run.ps1       # Start backend (loads ../.env)
 │   └── mvn.cmd       # Maven wrapper helper (Windows)
 ├── frontend/         # React + Vite + Tailwind + Three.js
+├── postman/          # Postman collection & local environment
+├── docs/screenshots/ # README screenshots
 ├── .env.example      # Environment template (copy to .env)
 └── README.md
 ```
@@ -182,6 +184,7 @@ CACHE_TYPE=simple
 | POST | `/api/auth/reset-password` | Public — OTP or magic link + new password |
 | POST | `/api/auth/resend-password-reset` | Public |
 | POST | `/api/auth/google` | Public |
+| POST | `/api/auth/logout` | Public — clears HttpOnly JWT cookies |
 | POST | `/api/auth/send-phone-otp` | Authenticated — send SMS OTP to registered mobile |
 | POST | `/api/auth/resend-phone-otp` | Authenticated |
 | POST | `/api/auth/verify-phone` | Authenticated — body `{ "code": "123456" }` |
@@ -192,6 +195,47 @@ CACHE_TYPE=simple
 | GET | `/api/doctors/nearby` | Public |
 | POST | `/api/appointments` | Authenticated |
 | GET | `/api/admin/users` | Admin |
+
+**CSRF:** State-changing requests (`POST`, `PUT`, `PATCH`, `DELETE`) require the `X-XSRF-TOKEN` header. Spring Security sets an `XSRF-TOKEN` cookie on the first GET; the React client reads it automatically.
+
+---
+
+## Postman
+
+Import both files from the `postman/` folder:
+
+| File | Purpose |
+|------|---------|
+| `HealthID-API.postman_collection.json` | All main API endpoints |
+| `HealthID-Local.postman_environment.json` | `baseUrl` = `http://localhost:8080` |
+
+**Steps:**
+
+1. Start the backend (`cd backend && .\run.ps1`).
+2. In Postman: **Import** → select both JSON files.
+3. Enable **Settings → Cookies** (automatic cookie jar).
+4. Run **Setup → Health Check** to obtain the CSRF cookie.
+5. Run **Auth → Login** with your admin credentials (`ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env`).
+6. Call protected endpoints — the collection pre-request script sends `X-XSRF-TOKEN` automatically.
+
+Swagger UI remains available at http://localhost:8080/swagger-ui.html
+
+---
+
+## Screenshots
+
+| Home | Login | Signup | e-Channeling |
+|------|-------|--------|--------------|
+| ![Home](docs/screenshots/home.png) | ![Login](docs/screenshots/login.png) | ![Signup](docs/screenshots/signup.png) | ![e-Channeling](docs/screenshots/echanneling.png) |
+
+To regenerate screenshots locally:
+
+```bash
+cd frontend && npm run dev
+# new terminal
+npx playwright install chromium
+node docs/capture-screenshots.mjs
+```
 
 ---
 

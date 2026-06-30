@@ -4,9 +4,13 @@ import HealthIdLoadingIcon from '../ui/HealthIdLoadingIcon'
 import { api } from '../../api/client'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
+import PaginationBar from '../ui/PaginationBar'
+
+const PAGE_SIZE = 20
 
 export default function AdminPatients() {
-  const [patients, setPatients] = useState({ content: [] })
+  const [patients, setPatients] = useState({ content: [], totalPages: 0, totalElements: 0, number: 0 })
+  const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState(null)
@@ -17,13 +21,17 @@ export default function AdminPatients() {
   const loadPatients = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await api.adminPatients(search || undefined)
+      const res = await api.adminPatients(search || undefined, page)
       setPatients(res)
     } catch {
-      setPatients({ content: [] })
+      setPatients({ content: [], totalPages: 0, totalElements: 0, number: 0 })
     } finally {
       setLoading(false)
     }
+  }, [search, page])
+
+  useEffect(() => {
+    setPage(0)
   }, [search])
 
   useEffect(() => {
@@ -131,6 +139,14 @@ export default function AdminPatients() {
               ))}
             </tbody>
           </table>
+          <PaginationBar
+            page={patients.number ?? page}
+            totalPages={patients.totalPages ?? 0}
+            totalElements={patients.totalElements ?? 0}
+            pageSize={patients.size ?? PAGE_SIZE}
+            onPageChange={setPage}
+            disabled={loading}
+          />
         </div>
       )}
 

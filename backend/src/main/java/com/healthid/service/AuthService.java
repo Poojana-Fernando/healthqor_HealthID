@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.healthid.dto.auth.AuthResultResponse;
 import com.healthid.dto.auth.AuthResponse;
+import com.healthid.dto.auth.DoctorForgotPasswordRequest;
+import com.healthid.dto.auth.DoctorLoginRequest;
 import com.healthid.dto.auth.ForgotPasswordRequest;
 import com.healthid.dto.auth.ForgotPasswordResponse;
 import com.healthid.dto.auth.GoogleAuthRequest;
@@ -27,6 +29,7 @@ import com.healthid.exception.UnauthorizedException;
 import com.healthid.repository.HealthProfileRepository;
 import com.healthid.repository.UserRepository;
 import com.healthid.security.CustomUserDetailsService;
+import com.healthid.security.JwtFilter;
 import com.healthid.security.JwtUtil;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.Cookie;
@@ -62,6 +65,7 @@ public class AuthService {
     private final EmailVerificationService emailVerificationService;
     private final PasswordResetService passwordResetService;
     private final PhoneVerificationService phoneVerificationService;
+    private final DoctorLoginIdentifierResolver doctorLoginIdentifierResolver;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -86,7 +90,8 @@ public class AuthService {
             AuditLogService auditLogService,
             EmailVerificationService emailVerificationService,
             PasswordResetService passwordResetService,
-            PhoneVerificationService phoneVerificationService) {
+            PhoneVerificationService phoneVerificationService,
+            DoctorLoginIdentifierResolver doctorLoginIdentifierResolver) {
         this.userRepository = userRepository;
         this.healthProfileRepository = healthProfileRepository;
         this.passwordEncoder = passwordEncoder;
@@ -99,6 +104,7 @@ public class AuthService {
         this.emailVerificationService = emailVerificationService;
         this.passwordResetService = passwordResetService;
         this.phoneVerificationService = phoneVerificationService;
+        this.doctorLoginIdentifierResolver = doctorLoginIdentifierResolver;
     }
 
     public AuthResultResponse register(RegisterRequest request, HttpServletResponse response) {
@@ -122,6 +128,21 @@ public class AuthService {
         return AuthResultResponse.fromAuth(toAuthResponse(user));
     }
 
+    public AuthResultResponse doctorLogin(DoctorLoginRequest request, HttpServletResponse response) {
+        User user = doctorLoginIdentifierResolver.resolveDoctorUser(request.getIdentifier())
+                .orElseThrow(() -> new UnauthorizedException("Invalid email, SLMC number, or password"));
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(user.getEmail(), request.getPassword())
+            );
+        } catch (Exception e) {
+            throw new UnauthorizedException("Invalid email, SLMC number, or password");
+        }
+        auditLogService.log(user.getId(), "LOGIN", "User", user.getId());
+        setTokenCookies(user, response);
+        return AuthResultResponse.fromAuth(toAuthResponse(user));
+    }
+
     public AuthResultResponse verifyEmail(VerifyEmailRequest request, HttpServletResponse response) {
         VerificationResult result = emailVerificationService.verify(request);
         if (result.purpose() == VerificationPurpose.LOGIN) {
@@ -137,6 +158,10 @@ public class AuthService {
 
     public ForgotPasswordResponse forgotPassword(ForgotPasswordRequest request) {
         return passwordResetService.requestReset(request.getEmail());
+    }
+
+    public ForgotPasswordResponse doctorForgotPassword(DoctorForgotPasswordRequest request) {
+        return passwordResetService.requestDoctorReset(request.getIdentifier());
     }
 
     public ResetPasswordResponse resetPassword(ResetPasswordRequest request) {
@@ -298,6 +323,10 @@ public class AuthService {
         return user;
     }
 
+    public void logout(HttpServletResponse response) {
+        clearTokenCookies(response);
+    }
+
     public AuthResponse refresh(String refreshToken, HttpServletResponse response) {
         try {
             Claims claims = jwtUtil.parseClaims(refreshToken);
@@ -319,20 +348,25 @@ public class AuthService {
         String accessToken = jwtUtil.generateAccessToken(user.getId(), user.getEmail(), user.getRole());
         String refreshToken = jwtUtil.generateRefreshToken(user.getId(), user.getEmail(), user.getRole());
 
-        Cookie accessCookie = new Cookie(com.healthid.security.JwtFilter.ACCESS_TOKEN_COOKIE, accessToken);
-        accessCookie.setHttpOnly(true);
-        accessCookie.setSecure(false);
-        accessCookie.setPath("/");
-        accessCookie.setMaxAge(15 * 60);
-
-        Cookie refreshCookie = new Cookie(com.healthid.security.JwtFilter.REFRESH_TOKEN_COOKIE, refreshToken);
-        refreshCookie.setHttpOnly(true);
-        refreshCookie.setSecure(false);
-        refreshCookie.setPath("/");
-        refreshCookie.setMaxAge(7 * 24 * 60 * 60);
+        Cookie accessCookie = authCookie(JwtFilter.ACCESS_TOKEN_COOKIE, accessToken, 15 * 60);
+        Cookie refreshCookie = authCookie(JwtFilter.REFRESH_TOKEN_COOKIE, refreshToken, 7 * 24 * 60 * 60);
 
         response.addCookie(accessCookie);
         response.addCookie(refreshCookie);
+    }
+
+    private void clearTokenCookies(HttpServletResponse response) {
+        response.addCookie(authCookie(JwtFilter.ACCESS_TOKEN_COOKIE, "", 0));
+        response.addCookie(authCookie(JwtFilter.REFRESH_TOKEN_COOKIE, "", 0));
+    }
+
+    private Cookie authCookie(String name, String value, int maxAgeSeconds) {
+        Cookie cookie = new Cookie(name, value);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(false);
+        cookie.setPath("/");
+        cookie.setMaxAge(maxAgeSeconds);
+        return cookie;
     }
 
     private void ensureOAuthEmailVerified(User user) {

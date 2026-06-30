@@ -49,4 +49,16 @@ public class NoOpEmailService implements EmailService {
                 payload.magicLinkUrl()
         );
     }
+
+    @Override
+    public void sendAppointmentConfirmationEmail(AppointmentConfirmationEmailPayload payload) {
+        capturedEmailStore.captureAppointmentConfirmation(payload);
+        log.info(
+                "DEV appointment confirmation for {}: ref={}, doctor={}, scheduledAt={}",
+                payload.toEmail(),
+                payload.referenceNumber(),
+                payload.doctorName(),
+                payload.scheduledAtFormatted()
+        );
+    }
 }

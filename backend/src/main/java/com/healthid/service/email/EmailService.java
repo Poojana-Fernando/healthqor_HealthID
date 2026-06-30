@@ -7,4 +7,6 @@ public interface EmailService {
     void sendPasswordResetEmail(PasswordResetEmailPayload payload);
 
     void sendDoctorInvitationEmail(DoctorInvitationEmailPayload payload);
+
+    void sendAppointmentConfirmationEmail(AppointmentConfirmationEmailPayload payload);
 }

@@ -6,8 +6,8 @@ export default function Navbar() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     navigate('/')
   }
 
@@ -29,6 +29,10 @@ export default function Navbar() {
             e-Channeling
           </a>
           <Link to="/support" className="hover:text-accent2 transition">Support</Link>
+          <Link to="/doctor/login" className="hover:text-accent2 transition">Doctor Login</Link>
+          {user?.role === 'DOCTOR' && (
+            <Link to="/doctor" className="hover:text-accent2 transition text-accent">Doctor Portal</Link>
+          )}
           {user?.role === 'ADMIN' && (
             <Link to="/admin" className="hover:text-accent2 transition text-accent">Admin</Link>
           )}

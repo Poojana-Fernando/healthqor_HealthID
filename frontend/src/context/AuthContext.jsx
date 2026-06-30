@@ -47,6 +47,13 @@ export function AuthProvider({ children }) {
     return res
   }
 
+  const doctorLogin = async (identifier, password) => {
+    const res = await api.doctorLogin({ identifier, password })
+    applyAuthResult(setUser, res)
+    await refreshProfile()
+    return res
+  }
+
   const register = async (data) => {
     const res = await api.register(data)
     if (res.requiresVerification) {
@@ -73,7 +80,12 @@ export function AuthProvider({ children }) {
     return res
   }
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await api.logout()
+    } catch {
+      // Clear local state even if the API is unreachable
+    }
     setUser(null)
     setProfile(null)
   }
@@ -84,6 +96,7 @@ export function AuthProvider({ children }) {
       profile,
       loading,
       login,
+      doctorLogin,
       register,
       verifyEmail,
       resendVerification,

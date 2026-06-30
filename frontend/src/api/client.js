@@ -1,6 +1,20 @@
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
-const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH'])
+const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
+const CSRF_COOKIE = 'XSRF-TOKEN'
+const CSRF_HEADER = 'X-XSRF-TOKEN'
+
+function readCsrfToken() {
+  const prefix = `${CSRF_COOKIE}=`
+  const entry = document.cookie.split(';').map((c) => c.trim()).find((c) => c.startsWith(prefix))
+  if (!entry) return null
+  return decodeURIComponent(entry.slice(prefix.length))
+}
+
+async function ensureCsrfToken() {
+  if (readCsrfToken()) return
+  await fetch(`${API_BASE}/actuator/health`, { credentials: 'include' })
+}
 
 function buildFetchOptions(options = {}) {
   const method = (options.method || 'GET').toUpperCase()
@@ -8,6 +22,10 @@ function buildFetchOptions(options = {}) {
   let body = options.body
 
   if (BODY_METHODS.has(method)) {
+    const csrf = readCsrfToken()
+    if (csrf) {
+      headers[CSRF_HEADER] = csrf
+    }
     if (body === undefined) {
       body = '{}'
     }
@@ -34,6 +52,11 @@ function networkErrorMessage(error) {
 }
 
 async function request(path, options = {}) {
+  const method = (options.method || 'GET').toUpperCase()
+  if (BODY_METHODS.has(method)) {
+    await ensureCsrfToken()
+  }
+
   let res
   try {
     res = await fetch(`${API_BASE}${path}`, buildFetchOptions(options))
@@ -61,9 +84,11 @@ async function request(path, options = {}) {
 export const api = {
   register: (data) => request('/api/auth/register', { method: 'POST', body: JSON.stringify(data) }),
   login: (data) => request('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+  doctorLogin: (data) => request('/api/auth/doctor/login', { method: 'POST', body: JSON.stringify(data) }),
   verifyEmail: (data) => request('/api/auth/verify-email', { method: 'POST', body: JSON.stringify(data) }),
   resendVerification: (data) => request('/api/auth/resend-verification', { method: 'POST', body: JSON.stringify(data) }),
   forgotPassword: (data) => request('/api/auth/forgot-password', { method: 'POST', body: JSON.stringify(data) }),
+  doctorForgotPassword: (data) => request('/api/auth/doctor/forgot-password', { method: 'POST', body: JSON.stringify(data) }),
   resetPassword: (data) => request('/api/auth/reset-password', { method: 'POST', body: JSON.stringify(data) }),
   resendPasswordReset: (data) => request('/api/auth/resend-password-reset', { method: 'POST', body: JSON.stringify(data) }),
   googleAuth: (data) => request('/api/auth/google', { method: 'POST', body: JSON.stringify(data) }),
@@ -71,6 +96,7 @@ export const api = {
   resendPhoneOtp: () => request('/api/auth/resend-phone-otp', { method: 'POST' }),
   verifyPhone: (data) => request('/api/auth/verify-phone', { method: 'POST', body: JSON.stringify(data) }),
   refresh: () => request('/api/auth/refresh', { method: 'POST' }),
+  logout: () => request('/api/auth/logout', { method: 'POST' }),
   getProfile: () => request('/api/profile/me'),
   updateProfile: (data) => request('/api/profile/me', { method: 'PUT', body: JSON.stringify(data) }),
   getVaccinations: () => request('/api/health-data/vaccinations'),
@@ -137,4 +163,24 @@ export const api = {
   adminCancelAppointment: (id) => request(`/api/admin/appointments/${id}/cancel`, { method: 'POST' }),
   adminAuditLogs: (page = 0) => request(`/api/admin/audit-logs?page=${page}&size=50`),
   adminStats: () => request('/api/admin/stats'),
+  doctorMe: () => request('/api/doctor/me'),
+  doctorUpdateProfile: (data) => request('/api/doctor/me', { method: 'PUT', body: JSON.stringify(data) }),
+  doctorSetAvailability: (data) => request('/api/doctor/me/availability', { method: 'PATCH', body: JSON.stringify(data) }),
+  doctorStats: () => request('/api/doctor/stats'),
+  doctorAppointments: ({ status, from, to, page = 0, size = 20 } = {}) => {
+    const params = new URLSearchParams({ page, size })
+    if (status) params.set('status', status)
+    if (from) params.set('from', from)
+    if (to) params.set('to', to)
+    return request(`/api/doctor/appointments?${params}`)
+  },
+  doctorAppointment: (id) => request(`/api/doctor/appointments/${id}`),
+  doctorUpdateAppointmentStatus: (id, data) =>
+    request(`/api/doctor/appointments/${id}/status`, { method: 'PATCH', body: JSON.stringify(data) }),
+  doctorSchedule: () => request('/api/doctor/schedule'),
+  doctorUpdateSchedule: (data) => request('/api/doctor/schedule', { method: 'PUT', body: JSON.stringify(data) }),
+  doctorSlots: (doctorId, from, to) => {
+    const params = new URLSearchParams({ from, to })
+    return request(`/api/doctors/${doctorId}/slots?${params}`)
+  },
 }

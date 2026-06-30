@@ -15,6 +15,8 @@ public interface DoctorRepository extends MongoRepository<Doctor, String> {
 
     Optional<Doctor> findByUserId(String userId);
 
+    Optional<Doctor> findByLicenseNumberIgnoreCase(String licenseNumber);
+
     boolean existsByLicenseNumber(String licenseNumber);
 
     long countByVerifiedByAdmin(boolean verifiedByAdmin);

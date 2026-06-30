@@ -1,0 +1,443 @@
+{
+  "info": {
+    "_postman_id": "healthid-api-collection",
+    "name": "Healthqor Health ID API",
+    "description": "Spring Boot API for Health ID. Import the environment file and run **Auth → Health Check** first to obtain CSRF cookies.\n\nCookie auth: login responses set `healthid_access_token` and `healthid_refresh_token`. Postman sends cookies automatically when enabled in settings.\n\nCSRF: After any GET, use the `XSRF-TOKEN` cookie value as header `X-XSRF-TOKEN` on POST/PUT/PATCH/DELETE (collection pre-request script handles this).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "challengeId", "value": "" },
+    { "key": "doctorId", "value": "" },
+    { "key": "patientId", "value": "" },
+    { "key": "appointmentId", "value": "" }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const csrf = pm.cookies.get('XSRF-TOKEN');",
+          "if (csrf) {",
+          "  pm.request.headers.upsert({ key: 'X-XSRF-TOKEN', value: csrf });",
+          "}",
+          "const method = pm.request.method;",
+          "if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {",
+          "  pm.request.headers.upsert({ key: 'Content-Type', value: 'application/json' });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "Health Check (get CSRF cookie)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/actuator/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.challengeId) pm.collectionVariables.set('challengeId', body.challengeId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"testuser@healthid.lk\",\n  \"password\": \"password123\",\n  \"nationalId\": \"199012345678\",\n  \"country\": \"LK\",\n  \"mobile\": \"+94771234567\",\n  \"birthDate\": \"1990-01-15\",\n  \"bloodType\": \"O+\",\n  \"heightCm\": 175,\n  \"weightKg\": 70,\n  \"allergies\": [\"seafood\"]\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/register"
+          }
+        },
+        {
+          "name": "Verify Email",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{challengeId}}\",\n  \"code\": \"123456\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/verify-email"
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@healthid.lk\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/logout"
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/refresh"
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"testuser@healthid.lk\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/forgot-password"
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"testuser@healthid.lk\",\n  \"code\": \"123456\",\n  \"newPassword\": \"newpassword456\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/reset-password"
+          }
+        },
+        {
+          "name": "Send Phone OTP",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/send-phone-otp"
+          }
+        },
+        {
+          "name": "Verify Phone",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"123456\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/verify-phone"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/profile/me"
+          }
+        },
+        {
+          "name": "Update My Profile",
+          "request": {
+            "method": "PUT",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"heightCm\": 176,\n  \"weightKg\": 72\n}"
+            },
+            "url": "{{baseUrl}}/api/profile/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health Data",
+      "item": [
+        {
+          "name": "List Vaccinations",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/health-data/vaccinations"
+          }
+        },
+        {
+          "name": "Add Vaccination",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vaccineName\": \"COVID-19 Booster\",\n  \"doseNumber\": 1,\n  \"administeredAt\": \"2024-06-01T10:00:00Z\",\n  \"provider\": \"National Hospital\"\n}"
+            },
+            "url": "{{baseUrl}}/api/health-data/vaccinations"
+          }
+        },
+        {
+          "name": "Medical History",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/health-data/medical-history"
+          }
+        },
+        {
+          "name": "Previous Diseases",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/health-data/previous-diseases"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Doctors (Public)",
+      "item": [
+        {
+          "name": "Search Doctors",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/doctors/search?specialization=General",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "doctors", "search"],
+              "query": [{ "key": "specialization", "value": "General" }]
+            }
+          }
+        },
+        {
+          "name": "Nearby Doctors",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/doctors/nearby?lat=6.9271&lng=79.8612",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "doctors", "nearby"],
+              "query": [
+                { "key": "lat", "value": "6.9271" },
+                { "key": "lng", "value": "79.8612" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Appointments",
+      "item": [
+        {
+          "name": "Book Appointment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.collectionVariables.set('appointmentId', pm.response.json().id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorId\": \"{{doctorId}}\",\n  \"scheduledAt\": \"2026-07-15T09:00:00Z\",\n  \"notes\": \"Follow-up consultation\"\n}"
+            },
+            "url": "{{baseUrl}}/api/appointments"
+          }
+        },
+        {
+          "name": "My Appointments",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/appointments/mine"
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI",
+      "item": [
+        {
+          "name": "Symptom Check",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"symptoms\": \"headache and fever for two days\"\n}"
+            },
+            "url": "{{baseUrl}}/api/ai/symptom-check"
+          }
+        },
+        {
+          "name": "Health Analysis",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{patientId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/ai/health-analysis"
+          }
+        },
+        {
+          "name": "Chat Assistant",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"What vaccines do I need?\",\n  \"history\": []\n}"
+            },
+            "url": "{{baseUrl}}/api/ai/chat"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "List Users (paginated)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "users"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" },
+                { "key": "search", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lookup User",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users/lookup?identifier=HID-LK-1990-EXAMPLE",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "users", "lookup"],
+              "query": [{ "key": "identifier", "value": "HID-LK-1990-EXAMPLE" }]
+            }
+          }
+        },
+        {
+          "name": "List Doctors (paginated)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/doctors?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "doctors"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Doctor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.collectionVariables.set('doctorId', pm.response.json().id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dr Postman Test\",\n  \"email\": \"dr.postman@healthid.lk\",\n  \"nationalId\": \"198512345678\",\n  \"country\": \"LK\",\n  \"birthDate\": \"1985-03-20\",\n  \"gender\": \"MALE\",\n  \"nameTitle\": \"DR\",\n  \"specialization\": \"General Medicine\",\n  \"hospital\": \"National Hospital\",\n  \"licenseNumber\": \"SLMC-POSTMAN-001\",\n  \"experienceYears\": 8,\n  \"maritalStatus\": \"MARRIED\",\n  \"education\": [\n    {\n      \"degree\": \"MBBS\",\n      \"institution\": \"University of Colombo\",\n      \"year\": 2010\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/admin/doctors"
+          }
+        },
+        {
+          "name": "Verify Doctor",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/admin/doctors/{{doctorId}}/verify?approved=true"
+          }
+        },
+        {
+          "name": "List Patients (paginated)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/patients?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "patients"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin Stats",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/admin/stats"
+          }
+        },
+        {
+          "name": "Audit Logs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/audit-logs?page=0&size=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "audit-logs"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel Appointment",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/admin/appointments/{{appointmentId}}/cancel"
+          }
+        }
+      ]
+    }
+  ]
+}

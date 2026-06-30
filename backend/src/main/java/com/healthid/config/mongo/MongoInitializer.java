@@ -35,6 +35,7 @@ public class MongoInitializer implements ApplicationRunner {
         ensureCollection(database, "medical_history", medicalHistoryValidator());
         ensureCollection(database, "doctors", doctorsValidator());
         ensureCollection(database, "appointments", appointmentsValidator());
+        ensureCollection(database, "doctor_schedules", doctorSchedulesValidator());
         ensureCollection(database, "audit_logs", auditLogsValidator());
         ensureCollection(database, "email_verification_challenges", emailVerificationChallengesValidator());
         ensureCollection(database, "pending_registrations", pendingRegistrationsValidator());
@@ -139,6 +140,16 @@ public class MongoInitializer implements ApplicationRunner {
                         .append("status", new Document("enum", java.util.List.of(
                                 "PENDING", "CONFIRMED", "CANCELLED", "COMPLETED")))
                         .append("createdAt", new Document("bsonType", "date"))));
+    }
+
+    private Document doctorSchedulesValidator() {
+        return new Document("$jsonSchema", new Document()
+                .append("bsonType", "object")
+                .append("required", java.util.List.of("doctorId", "slotDurationMinutes", "updatedAt"))
+                .append("properties", new Document()
+                        .append("doctorId", new Document("bsonType", "string"))
+                        .append("slotDurationMinutes", new Document("bsonType", "int"))
+                        .append("updatedAt", new Document("bsonType", "date"))));
     }
 
     private Document auditLogsValidator() {

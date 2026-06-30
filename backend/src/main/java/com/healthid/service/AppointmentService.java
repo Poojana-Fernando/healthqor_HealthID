@@ -23,18 +23,21 @@ public class AppointmentService {
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
     private final EncryptionService encryptionService;
+    private final DoctorSlotService doctorSlotService;
 
     public AppointmentService(
             AppointmentRepository appointmentRepository,
             DoctorRepository doctorRepository,
             UserRepository userRepository,
             AuditLogService auditLogService,
-            EncryptionService encryptionService) {
+            EncryptionService encryptionService,
+            DoctorSlotService doctorSlotService) {
         this.appointmentRepository = appointmentRepository;
         this.doctorRepository = doctorRepository;
         this.userRepository = userRepository;
         this.auditLogService = auditLogService;
         this.encryptionService = encryptionService;
+        this.doctorSlotService = doctorSlotService;
     }
 
     @Transactional
@@ -43,6 +46,8 @@ public class AppointmentService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         Doctor doctor = doctorRepository.findById(request.getDoctorId())
                 .orElseThrow(() -> new ResourceNotFoundException("Doctor not found"));
+
+        doctorSlotService.validateSlotForBooking(doctor.getId(), request.getScheduledAt());
 
         Appointment appointment = Appointment.builder()
                 .patientId(patient.getId())

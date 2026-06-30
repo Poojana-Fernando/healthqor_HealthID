@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
@@ -59,7 +60,7 @@ class ProfileIntegrationTest {
         register.setWeightKg(BigDecimal.valueOf(75));
 
         MvcResult registerResult = mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(register)))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -72,7 +73,7 @@ class ProfileIntegrationTest {
         verify.setCode(capturedEmailStore.getLast().otpCode());
 
         MvcResult verifyResult = mockMvc.perform(post("/api/auth/verify-email")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(verify)))
                 .andExpect(status().isOk())
                 .andExpect(cookie().exists(JwtFilter.ACCESS_TOKEN_COOKIE))

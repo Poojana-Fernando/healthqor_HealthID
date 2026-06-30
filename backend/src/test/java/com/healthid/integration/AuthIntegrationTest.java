@@ -7,6 +7,7 @@ import com.healthid.dto.auth.ResendVerificationRequest;
 import com.healthid.dto.auth.VerifyEmailRequest;
 import com.healthid.entity.User;
 import com.healthid.repository.UserRepository;
+import com.healthid.security.JwtFilter;
 import com.healthid.service.email.CapturedEmailStore;
 import com.healthid.service.email.VerificationEmailPayload;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,6 +27,7 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -58,7 +60,7 @@ class AuthIntegrationTest {
         RegisterRequest register = sampleRegister("verify@healthid.lk");
 
         MvcResult registerResult = mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(register)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.requiresVerification").value(true))
@@ -79,7 +81,7 @@ class AuthIntegrationTest {
         verify.setCode(email.otpCode());
 
         mockMvc.perform(post("/api/auth/verify-email")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(verify)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.requiresVerification").value(false))
@@ -104,7 +106,7 @@ class AuthIntegrationTest {
         login.setPassword("password123");
 
         MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(login)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.requiresVerification").value(true))
@@ -120,7 +122,7 @@ class AuthIntegrationTest {
         verify.setCode(email.otpCode());
 
         mockMvc.perform(post("/api/auth/verify-email")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(verify)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.requiresVerification").value(false))
@@ -132,7 +134,7 @@ class AuthIntegrationTest {
         RegisterRequest register = sampleRegister("magic@healthid.lk");
 
         MvcResult registerResult = mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(register)))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -147,7 +149,7 @@ class AuthIntegrationTest {
         verify.setToken(token);
 
         mockMvc.perform(post("/api/auth/verify-email")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(verify)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.requiresVerification").value(false))
@@ -161,7 +163,7 @@ class AuthIntegrationTest {
         RegisterRequest register = sampleRegister("resend@healthid.lk");
 
         MvcResult registerResult = mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(register)))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -174,7 +176,7 @@ class AuthIntegrationTest {
         resend.setChallengeId(challengeId);
 
         mockMvc.perform(post("/api/auth/resend-verification")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(resend)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.requiresVerification").value(true));
@@ -190,12 +192,51 @@ class AuthIntegrationTest {
     }
 
     @Test
+    void logoutClearsCookiesAndRevokesAccess() throws Exception {
+        RegisterRequest register = sampleRegister("logout@healthid.lk");
+
+        MvcResult registerResult = mockMvc.perform(post("/api/auth/register")
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(register)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String challengeId = objectMapper.readTree(registerResult.getResponse().getContentAsString())
+                .get("challengeId").asText();
+
+        VerifyEmailRequest verify = new VerifyEmailRequest();
+        verify.setChallengeId(challengeId);
+        verify.setCode(capturedEmailStore.getLast().otpCode());
+
+        MvcResult verifyResult = mockMvc.perform(post("/api/auth/verify-email")
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(verify)))
+                .andExpect(status().isOk())
+                .andExpect(cookie().exists(JwtFilter.ACCESS_TOKEN_COOKIE))
+                .andReturn();
+
+        jakarta.servlet.http.Cookie accessCookie = verifyResult.getResponse().getCookie(JwtFilter.ACCESS_TOKEN_COOKIE);
+        jakarta.servlet.http.Cookie refreshCookie = verifyResult.getResponse().getCookie(JwtFilter.REFRESH_TOKEN_COOKIE);
+
+        mockMvc.perform(get("/api/profile/me").cookie(accessCookie))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/auth/logout").with(csrf()).cookie(accessCookie, refreshCookie))
+                .andExpect(status().isNoContent())
+                .andExpect(cookie().maxAge(JwtFilter.ACCESS_TOKEN_COOKIE, 0))
+                .andExpect(cookie().maxAge(JwtFilter.REFRESH_TOKEN_COOKIE, 0));
+
+        mockMvc.perform(get("/api/profile/me").cookie(accessCookie))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void registerRejectsMissingMobile() throws Exception {
         RegisterRequest register = sampleRegister("nomobile@healthid.lk");
         register.setMobile(null);
 
         mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(register)))
                 .andExpect(status().isBadRequest());
     }
@@ -206,7 +247,7 @@ class AuthIntegrationTest {
         register.setMobile("0771234567");
 
         mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(register)))
                 .andExpect(status().isBadRequest());
     }
@@ -217,7 +258,7 @@ class AuthIntegrationTest {
         register.setBloodType(null);
 
         mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(register)))
                 .andExpect(status().isBadRequest());
     }
@@ -225,7 +266,7 @@ class AuthIntegrationTest {
     private void completeRegistration(String email) throws Exception {
         RegisterRequest register = sampleRegister(email);
         MvcResult registerResult = mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(register)))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -237,7 +278,7 @@ class AuthIntegrationTest {
         verify.setCode(capturedEmailStore.getLast().otpCode());
 
         mockMvc.perform(post("/api/auth/verify-email")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(verify)))
                 .andExpect(status().isOk());
     }
