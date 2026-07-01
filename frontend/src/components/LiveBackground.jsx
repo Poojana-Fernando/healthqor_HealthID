@@ -47,7 +47,7 @@ export default function LiveBackground() {
       className="fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-[#0a1628] bg-performance-layer"
       aria-hidden="true"
     >
-      {/* Always-on fallback so slow loads, video errors, and headless captures never show white */}
+      {/* Fallback background */}
       <div
         className="absolute inset-0"
         style={{
@@ -56,6 +56,7 @@ export default function LiveBackground() {
         }}
       />
 
+      {/* Video background */}
       {!screenshotMode && (
         <video
           ref={videoRef}

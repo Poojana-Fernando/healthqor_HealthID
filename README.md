@@ -103,6 +103,7 @@ Edit `.env` and set these **required** values:
 | `BREVO_SENDER_NAME` | `HealthID` | Sender display name |
 | `EMAIL_REVERIFY_DAYS` | `30` | Password logins require email re-verification after this many days |
 | `EMAIL_OTP_EXPIRY_MINUTES` | `15` | OTP / magic link expiry |
+| `PHONE_SMS_PROVIDER` | — | Optional: `twilio` or `noop`. Auto-detects from Twilio credentials when empty |
 | `TWILIO_ACCOUNT_SID` | — | Twilio account SID for SMS phone verification (optional in dev — OTP logged to console) |
 | `TWILIO_AUTH_TOKEN` | — | Twilio auth token |
 | `TWILIO_FROM_NUMBER` | — | Twilio sender number in E.164 (e.g. `+15017122661`) |
@@ -110,7 +111,7 @@ Edit `.env` and set these **required** values:
 
 **Email verification (Brevo):** Sign up at [Brevo](https://app.brevo.com), verify a sender email or domain, then create an API v3 key. Without `BREVO_API_KEY`, the backend uses a dev no-op mailer that logs OTP codes to the console.
 
-**Phone verification (Twilio):** See [docs/TWILIO_SETUP.md](docs/TWILIO_SETUP.md) for the full setup walkthrough. Without `TWILIO_ACCOUNT_SID`, the backend logs SMS OTP codes to the console (same pattern as email).
+**Phone verification (Twilio):** See [docs/TWILIO_SETUP.md](docs/TWILIO_SETUP.md) for the full setup walkthrough. Leave all `TWILIO_*` empty or set `PHONE_SMS_PROVIDER=noop` for dev mode (OTP logged to console and returned as `devOtp` in the API when `SPRING_PROFILES_ACTIVE=dev`).
 
 > **Never commit `.env`** — it is listed in `.gitignore`.
 

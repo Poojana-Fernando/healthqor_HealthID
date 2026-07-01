@@ -95,13 +95,34 @@ Restart the backend after changing `.env`.
 
 ## Step 6 — Development without Twilio (no SMS cost)
 
-Leave `TWILIO_ACCOUNT_SID` **empty** in `.env`. The backend uses `NoOpSmsService` and logs:
+Leave all `TWILIO_*` variables **empty** in `.env`, or set:
+
+```env
+PHONE_SMS_PROVIDER=noop
+```
+
+The backend selects the **noop** SMS provider automatically when Twilio credentials are missing or incomplete. On startup you should see:
 
 ```
-DEV phone verification SMS to +94771234567: OTP=123456 (expires in 15 minutes)
+Phone SMS provider active: noop (OTP codes are logged to the backend console)
 ```
 
-The frontend modal shows a hint in dev mode to check the backend console.
+When a user requests phone verification, the backend logs:
+
+```
+DEV phone verification SMS to +9477...: OTP=123456 (expires in 15 minutes)
+```
+
+In local dev (`SPRING_PROFILES_ACTIVE=dev`), the OTP is also returned in the API response as `devOtp` and prefilled in the phone verification modal.
+
+| Variable | Purpose |
+|----------|---------|
+| `PHONE_SMS_PROVIDER` | Optional: `twilio`, `noop`. Auto-detects when empty. |
+| `TWILIO_ACCOUNT_SID` | Twilio account identifier (all three required for Twilio mode) |
+| `TWILIO_AUTH_TOKEN` | Secret for API authentication |
+| `TWILIO_FROM_NUMBER` | Your Twilio sender number (E.164) |
+
+The frontend modal shows a hint in dev mode and may prefill the OTP when `devOtp` is returned.
 
 ---
 

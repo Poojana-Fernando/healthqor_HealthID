@@ -1,13 +1,10 @@
 package com.healthid.service.sms;
 
 import com.healthid.exception.BadRequestException;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
-import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpStatusCodeException;
@@ -17,8 +14,6 @@ import org.springframework.web.client.RestTemplate;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
-@Service
-@ConditionalOnExpression("!'${twilio.account-sid:}'.isBlank()")
 public class TwilioSmsService implements SmsService {
 
     private final RestTemplate restTemplate;
@@ -26,10 +21,7 @@ public class TwilioSmsService implements SmsService {
     private final String authToken;
     private final String fromNumber;
 
-    public TwilioSmsService(
-            @Value("${twilio.account-sid}") String accountSid,
-            @Value("${twilio.auth-token}") String authToken,
-            @Value("${twilio.from-number}") String fromNumber) {
+    public TwilioSmsService(String accountSid, String authToken, String fromNumber) {
         this.accountSid = accountSid;
         this.authToken = authToken;
         this.fromNumber = fromNumber;

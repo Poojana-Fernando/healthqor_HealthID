@@ -13,6 +13,8 @@ import com.healthid.service.sms.SmsOtpPayload;
 import com.healthid.service.sms.SmsService;
 import com.healthid.util.VerificationHasher;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +35,7 @@ public class PhoneVerificationService {
     private final PhoneVerificationChallengeRepository challengeRepository;
     private final SmsService smsService;
     private final AuditLogService auditLogService;
+    private final Environment environment;
     private final String verificationPepper;
     private final int otpExpiryMinutes;
     private final int resendCooldownSeconds;
@@ -44,6 +47,7 @@ public class PhoneVerificationService {
             PhoneVerificationChallengeRepository challengeRepository,
             SmsService smsService,
             AuditLogService auditLogService,
+            Environment environment,
             PlatformTransactionManager transactionManager,
             @Value("${jwt.secret}") String verificationPepper,
             @Value("${phone.otp-expiry-minutes:15}") int otpExpiryMinutes,
@@ -53,6 +57,7 @@ public class PhoneVerificationService {
         this.challengeRepository = challengeRepository;
         this.smsService = smsService;
         this.auditLogService = auditLogService;
+        this.environment = environment;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.verificationPepper = verificationPepper;
         this.otpExpiryMinutes = otpExpiryMinutes;
@@ -106,6 +111,7 @@ public class PhoneVerificationService {
                     .maskedMobile(VerificationHasher.maskMobile(pending.mobile()))
                     .expiresAt(pending.expiresAt())
                     .message("Verification code sent")
+                    .devOtp(exposeDevOtp() ? pending.otp() : null)
                     .build();
         }
     }
@@ -220,5 +226,9 @@ public class PhoneVerificationService {
     }
 
     private record PendingOtpSend(String challengeId, String mobile, String otp, Instant expiresAt) {
+    }
+
+    private boolean exposeDevOtp() {
+        return smsService.isDevCaptureMode() && environment.acceptsProfiles(Profiles.of("dev"));
     }
 }
