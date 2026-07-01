@@ -21,6 +21,18 @@ export default function AdminDoctors() {
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState(null)
   const [appointments, setAppointments] = useState({ content: [] })
+  const [isEditing, setIsEditing] = useState(false)
+  const [editForm, setEditForm] = useState({
+    nameTitle: 'DR',
+    specialization: '',
+    hospital: '',
+    licenseNumber: '',
+    experienceYears: 0,
+    maritalStatus: 'SINGLE',
+    available: true,
+  })
+  const [updating, setUpdating] = useState(false)
+  const [editError, setEditError] = useState('')
 
   const loadDoctors = useCallback(async () => {
     setLoading(true)
@@ -53,6 +65,8 @@ export default function AdminDoctors() {
 
   const openDetail = async (doctor) => {
     setSelected(doctor)
+    setIsEditing(false)
+    setEditError('')
     try {
       const appts = await api.adminDoctorAppointments(doctor.id)
       setAppointments(appts)
@@ -74,6 +88,41 @@ export default function AdminDoctors() {
     await api.adminDeactivateDoctor(id)
     setSelected(null)
     loadDoctors()
+  }
+
+  const handleStartEdit = () => {
+    if (!selected) return
+    setEditForm({
+      nameTitle: selected.nameTitle || 'DR',
+      specialization: selected.specialization || '',
+      hospital: selected.hospital || '',
+      licenseNumber: selected.licenseNumber || '',
+      experienceYears: selected.experienceYears || 0,
+      maritalStatus: selected.maritalStatus || 'SINGLE',
+      available: selected.available ?? true,
+    })
+    setEditError('')
+    setIsEditing(true)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!selected) return
+    setUpdating(true)
+    setEditError('')
+    try {
+      const payload = {
+        ...editForm,
+        experienceYears: Number(editForm.experienceYears),
+      }
+      const updated = await api.adminUpdateDoctor(selected.id, payload)
+      setSelected(updated)
+      setIsEditing(false)
+      loadDoctors()
+    } catch (err) {
+      setEditError(err.message || 'Failed to update doctor')
+    } finally {
+      setUpdating(false)
+    }
   }
 
   return (
@@ -168,35 +217,88 @@ export default function AdminDoctors() {
               <h2 className="text-xl font-bold">{selected.nameTitle} {selected.name}</h2>
               <button type="button" onClick={() => setSelected(null)}><X className="h-5 w-5" /></button>
             </div>
-            <div className="space-y-3 text-sm">
-              <p><span className="opacity-60">Email:</span> {selected.email}</p>
-              <p><span className="opacity-60">Health ID:</span> {selected.healthId}</p>
-              <p><span className="opacity-60">Specialization:</span> {selected.specialization}</p>
-              <p><span className="opacity-60">Hospital:</span> {selected.hospital}</p>
-              <p><span className="opacity-60">License:</span> {selected.licenseNumber}</p>
-              <p><span className="opacity-60">Experience:</span> {selected.experienceYears} years</p>
-              <p><span className="opacity-60">Total bookings:</span> <span className="text-accent font-semibold">{selected.bookingCount}</span></p>
-              <p><span className="opacity-60">Status:</span> {selected.verifiedByAdmin ? 'Verified' : 'Pending verification'}</p>
-            </div>
-            {(selected.education || []).length > 0 && (
-              <div className="mt-4">
-                <h3 className="font-semibold mb-2">Education</h3>
-                <ul className="text-sm space-y-1 opacity-80">
-                  {selected.education.map((ed, i) => (
-                    <li key={i}>{ed.degree} — {ed.institution} ({ed.year})</li>
-                  ))}
-                </ul>
+            {isEditing ? (
+              <div className="space-y-4 text-sm">
+                <div>
+                  <label className="block opacity-60 mb-1">Title</label>
+                  <Select value={editForm.nameTitle} onChange={(e) => setEditForm({ ...editForm, nameTitle: e.target.value })}>
+                    <option value="DR">DR</option>
+                    <option value="PROF">PROF</option>
+                    <option value="MR">MR</option>
+                    <option value="MRS">MRS</option>
+                    <option value="MISS">MISS</option>
+                  </Select>
+                </div>
+                <div>
+                  <label className="block opacity-60 mb-1">Specialization</label>
+                  <Input value={editForm.specialization} onChange={(e) => setEditForm({ ...editForm, specialization: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block opacity-60 mb-1">Hospital</label>
+                  <Input value={editForm.hospital} onChange={(e) => setEditForm({ ...editForm, hospital: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block opacity-60 mb-1">License Number</label>
+                  <Input value={editForm.licenseNumber} onChange={(e) => setEditForm({ ...editForm, licenseNumber: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block opacity-60 mb-1">Experience (Years)</label>
+                  <Input type="number" value={editForm.experienceYears} onChange={(e) => setEditForm({ ...editForm, experienceYears: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block opacity-60 mb-1">Marital Status</label>
+                  <Select value={editForm.maritalStatus} onChange={(e) => setEditForm({ ...editForm, maritalStatus: e.target.value })}>
+                    <option value="SINGLE">SINGLE</option>
+                    <option value="MARRIED">MARRIED</option>
+                    <option value="DIVORCED">DIVORCED</option>
+                    <option value="WIDOWED">WIDOWED</option>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="available" checked={editForm.available} onChange={(e) => setEditForm({ ...editForm, available: e.target.checked })} />
+                  <label htmlFor="available" className="opacity-60">Available</label>
+                </div>
+                {editError && <p className="text-red-400 text-xs">{editError}</p>}
+                <div className="pt-2 flex gap-2">
+                  <Button type="button" onClick={handleSaveEdit} disabled={updating} loading={updating} loadingLabel="Saving...">Save</Button>
+                  <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
+                </div>
               </div>
+            ) : (
+              <>
+                <div className="space-y-3 text-sm">
+                  <p><span className="opacity-60">Email:</span> {selected.email}</p>
+                  <p><span className="opacity-60">Health ID:</span> {selected.healthId}</p>
+                  <p><span className="opacity-60">Specialization:</span> {selected.specialization}</p>
+                  <p><span className="opacity-60">Hospital:</span> {selected.hospital}</p>
+                  <p><span className="opacity-60">License:</span> {selected.licenseNumber}</p>
+                  <p><span className="opacity-60">Experience:</span> {selected.experienceYears} years</p>
+                  <p><span className="opacity-60">Total bookings:</span> <span className="text-accent font-semibold">{selected.bookingCount}</span></p>
+                  <p><span className="opacity-60">Status:</span> {selected.verifiedByAdmin ? 'Verified' : 'Pending verification'}</p>
+                  <p><span className="opacity-60">Available:</span> {selected.available ? 'Yes' : 'No'}</p>
+                </div>
+                {(selected.education || []).length > 0 && (
+                  <div className="mt-4">
+                    <h3 className="font-semibold mb-2">Education</h3>
+                    <ul className="text-sm space-y-1 opacity-80">
+                      {selected.education.map((ed, i) => (
+                        <li key={i}>{ed.degree} — {ed.institution} ({ed.year})</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <div className="mt-6 flex gap-2 flex-wrap">
+                  {!selected.verifiedByAdmin && (
+                    <Button type="button" onClick={() => handleVerify(selected.id, true)}>Verify</Button>
+                  )}
+                  {selected.verifiedByAdmin && (
+                    <Button type="button" variant="outline" onClick={() => handleVerify(selected.id, false)}>Reject</Button>
+                  )}
+                  <Button type="button" variant="outline" onClick={() => handleDeactivate(selected.id)}>Deactivate</Button>
+                  <Button type="button" variant="secondary" onClick={handleStartEdit}>Edit</Button>
+                </div>
+              </>
             )}
-            <div className="mt-6 flex gap-2 flex-wrap">
-              {!selected.verifiedByAdmin && (
-                <Button type="button" onClick={() => handleVerify(selected.id, true)}>Verify</Button>
-              )}
-              {selected.verifiedByAdmin && (
-                <Button type="button" variant="outline" onClick={() => handleVerify(selected.id, false)}>Reject</Button>
-              )}
-              <Button type="button" variant="outline" onClick={() => handleDeactivate(selected.id)}>Deactivate</Button>
-            </div>
             <div className="mt-8">
               <h3 className="font-semibold mb-3">Booking history</h3>
               <div className="space-y-2 text-sm">
