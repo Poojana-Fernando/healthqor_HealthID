@@ -47,7 +47,7 @@ export default function LiveBackground() {
       className="fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-[#0a1628] bg-performance-layer"
       aria-hidden="true"
     >
-      {/* Fallback background */}
+      {/* Always-on fallback so slow loads, video errors, and headless captures never show white */}
       <div
         className="absolute inset-0"
         style={{
@@ -56,7 +56,6 @@ export default function LiveBackground() {
         }}
       />
 
-      {/* Video background */}
       {!screenshotMode && (
         <video
           ref={videoRef}
@@ -74,7 +73,7 @@ export default function LiveBackground() {
         />
       )}
 
-      {/* Overlays */}
+      {/* Light edge vignettes only — keeps video highly visible */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#0a1628]/20 via-transparent to-[#0a1628]/30" />
       <div className="absolute inset-0 bg-gradient-to-r from-[#064e3b]/8 via-transparent to-[#0e7490]/8" />
       <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[#0a1628]/25 to-transparent" />

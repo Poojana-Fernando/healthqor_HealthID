@@ -116,6 +116,11 @@ export const api = {
     request('/api/ai/health-analysis', { method: 'POST', body: JSON.stringify({ userId }) }),
   chatAssistant: (message, history = []) =>
     request('/api/ai/chat', { method: 'POST', body: JSON.stringify({ message, history }) }),
+  searchHealthcareFacilities: (condition, lat, lng, radiusKm = 15) =>
+    request('/api/healthcare/facilities/search', {
+      method: 'POST',
+      body: JSON.stringify({ condition, lat, lng, radiusKm }),
+    }),
   nearbyDoctors: (lat, lng, specialty) => {
     const params = new URLSearchParams({ lat, lng })
     if (specialty) params.set('specialty', specialty)
