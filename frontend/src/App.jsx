@@ -4,6 +4,7 @@ import Navbar from './components/Navbar'
 import LiveBackground from './components/LiveBackground'
 import ChatbotFab from './components/ChatbotFab'
 import Footer from './components/Footer'
+import ScrollToTop from './components/ScrollToTop'
 
 import HomePage from './pages/HomePage'
 import ProfilePage from './pages/ProfilePage'
@@ -36,6 +37,9 @@ import DoctorProfile from './components/doctor/DoctorProfile'
 export default function App() {
   return (
     <div className="relative min-h-screen flex flex-col text-text">
+      {/* Scroll to top on navigation */}
+      <ScrollToTop />
+
       {/* Background */}
       <LiveBackground />
 
