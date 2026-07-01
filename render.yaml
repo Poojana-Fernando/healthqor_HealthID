@@ -42,5 +42,18 @@ services:
         sync: false
       - key: BREVO_SENDER_NAME
         value: HealthID
+      # Phone verification (Twilio SMS) — set PHONE_SMS_PROVIDER=twilio and fill TWILIO_* for live OTP
       - key: PHONE_SMS_PROVIDER
-        value: noop
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_NUMBER
+        sync: false
+      - key: PHONE_OTP_EXPIRY_MINUTES
+        value: "15"
+      - key: PHONE_RESEND_COOLDOWN_SECONDS
+        value: "60"
+      - key: PHONE_MAX_SENDS_PER_HOUR
+        value: "3"

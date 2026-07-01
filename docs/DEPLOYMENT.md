@@ -101,7 +101,13 @@ mongodb+srv://USER:PASS@cluster.mongodb.net/healthid?retryWrites=true&w=majority
 | `BREVO_API_KEY` | Strongly recommended | Without it, emails only log to console |
 | `BREVO_SENDER_EMAIL` | With Brevo | Verified sender in Brevo |
 | `BREVO_SENDER_NAME` | No | `HealthID` |
-| `PHONE_SMS_PROVIDER` | No | `noop` to skip SMS in demo |
+| `PHONE_SMS_PROVIDER` | For SMS OTP | `twilio` (or `noop` to disable) |
+| `TWILIO_ACCOUNT_SID` | With Twilio | From [Twilio Console](https://console.twilio.com/) |
+| `TWILIO_AUTH_TOKEN` | With Twilio | Keep secret |
+| `TWILIO_FROM_NUMBER` | With Twilio | E.164 format, e.g. `+15017122661` |
+| `PHONE_OTP_EXPIRY_MINUTES` | No | `15` (default in blueprint) |
+| `PHONE_RESEND_COOLDOWN_SECONDS` | No | `60` |
+| `PHONE_MAX_SENDS_PER_HOUR` | No | `3` |
 | `CACHE_TYPE` | No | `simple` (set automatically in `prod` profile) |
 
 `prod` profile also enables `cookie.secure=true` and `cookie.samesite=Strict` (see `application-prod.properties`).
