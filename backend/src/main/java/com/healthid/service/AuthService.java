@@ -78,6 +78,12 @@ public class AuthService {
     @Value("${frontend.origin}")
     private String frontendOrigin;
 
+    @Value("${cookie.secure:false}")
+    private boolean cookieSecure;
+
+    @Value("${cookie.samesite:Lax}")
+    private String cookieSameSite;
+
     public AuthService(
             UserRepository userRepository,
             HealthProfileRepository healthProfileRepository,
@@ -363,9 +369,10 @@ public class AuthService {
     private Cookie authCookie(String name, String value, int maxAgeSeconds) {
         Cookie cookie = new Cookie(name, value);
         cookie.setHttpOnly(true);
-        cookie.setSecure(false);
+        cookie.setSecure(cookieSecure);
         cookie.setPath("/");
         cookie.setMaxAge(maxAgeSeconds);
+        cookie.setAttribute("SameSite", cookieSameSite);
         return cookie;
     }
 
