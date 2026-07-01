@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "healthid-api-collection",
     "name": "Healthqor Health ID API",
-    "description": "Spring Boot API for Health ID. Import the environment file and run **Auth → Health Check** first to obtain CSRF cookies.\n\nCookie auth: login responses set `healthid_access_token` and `healthid_refresh_token`. Postman sends cookies automatically when enabled in settings.\n\nCSRF: After any GET, use the `XSRF-TOKEN` cookie value as header `X-XSRF-TOKEN` on POST/PUT/PATCH/DELETE (collection pre-request script handles this).",
+    "description": "Spring Boot API for Health ID (56 endpoints).\n\n## Quick start\n1. Import **Health ID — Local** environment (`postman/HealthID-Local.postman_environment.json`).\n2. Run **Setup → Health Check** first — this sets the `XSRF-TOKEN` cookie.\n3. Run **Auth → Login** (admin credentials) before protected endpoints.\n4. All POST/PUT/PATCH/DELETE requests auto-attach `X-XSRF-TOKEN` from the cookie.\n\n## Auth\n- Login sets HttpOnly cookies: `healthid_access_token`, `healthid_refresh_token`.\n- Enable cookies in Postman: **Settings → General → Cookies**.\n\n## CSRF troubleshooting\n- **403 Access denied** → run Health Check, then retry. Header value must be the cookie value only (not `XSRF-TOKEN=`).\n- **401 Invalid email or password** → wrong credentials or account not verified.\n\n## Roles\n- **CITIZEN** — profile, appointments, AI, Find Care\n- **DOCTOR** — `/api/doctor/**` (use Doctor Login)\n- **ADMIN** — `/api/admin/**` (default: `admin@healthid.lk` / `admin123`)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -18,7 +18,10 @@
       "script": {
         "type": "text/javascript",
         "exec": [
-          "const csrf = pm.cookies.get('XSRF-TOKEN');",
+          "let csrf = pm.cookies.get('XSRF-TOKEN');",
+          "if (csrf && csrf.startsWith('XSRF-TOKEN=')) {",
+          "  csrf = csrf.replace(/^XSRF-TOKEN=/, '');",
+          "}",
           "if (csrf) {",
           "  pm.request.headers.upsert({ key: 'X-XSRF-TOKEN', value: csrf });",
           "}",
@@ -39,7 +42,8 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/actuator/health"
+            "url": "{{baseUrl}}/actuator/health",
+            "description": "Run this before any POST/PUT/PATCH/DELETE. Copies `XSRF-TOKEN` cookie used by the collection pre-request script."
           }
         }
       ]
@@ -84,6 +88,17 @@
           }
         },
         {
+          "name": "Resend Verification",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{challengeId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/resend-verification"
+          }
+        },
+        {
           "name": "Login",
           "request": {
             "method": "POST",
@@ -92,6 +107,29 @@
               "raw": "{\n  \"email\": \"admin@healthid.lk\",\n  \"password\": \"admin123\"\n}"
             },
             "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Doctor Login",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"dr.postman@healthid.lk\",\n  \"password\": \"doctorpass123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/doctor/login",
+            "description": "`identifier` can be doctor email or SLMC license number."
+          }
+        },
+        {
+          "name": "Google OAuth",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"<google-authorization-code>\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/google"
           }
         },
         {
@@ -105,11 +143,26 @@
           "name": "Refresh Token",
           "request": {
             "method": "POST",
-            "url": "{{baseUrl}}/api/auth/refresh"
+            "url": "{{baseUrl}}/api/auth/refresh",
+            "description": "Uses `healthid_refresh_token` cookie from a prior login."
           }
         },
         {
           "name": "Forgot Password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.challengeId) pm.collectionVariables.set('challengeId', body.challengeId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "body": {
@@ -120,21 +173,51 @@
           }
         },
         {
+          "name": "Doctor Forgot Password",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"SLMC-POSTMAN-001\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/doctor/forgot-password"
+          }
+        },
+        {
           "name": "Reset Password",
           "request": {
             "method": "POST",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"testuser@healthid.lk\",\n  \"code\": \"123456\",\n  \"newPassword\": \"newpassword456\"\n}"
+              "raw": "{\n  \"challengeId\": \"{{challengeId}}\",\n  \"code\": \"123456\",\n  \"newPassword\": \"newpassword456\"\n}"
             },
             "url": "{{baseUrl}}/api/auth/reset-password"
+          }
+        },
+        {
+          "name": "Resend Password Reset",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{challengeId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/resend-password-reset"
           }
         },
         {
           "name": "Send Phone OTP",
           "request": {
             "method": "POST",
-            "url": "{{baseUrl}}/api/auth/send-phone-otp"
+            "url": "{{baseUrl}}/api/auth/send-phone-otp",
+            "description": "Requires citizen login cookie."
+          }
+        },
+        {
+          "name": "Resend Phone OTP",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/resend-phone-otp"
           }
         },
         {
@@ -189,9 +272,10 @@
             "method": "POST",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"vaccineName\": \"COVID-19 Booster\",\n  \"doseNumber\": 1,\n  \"administeredAt\": \"2024-06-01T10:00:00Z\",\n  \"provider\": \"National Hospital\"\n}"
+              "raw": "{\n  \"userId\": \"{{patientId}}\",\n  \"vaccineName\": \"COVID-19 Booster\",\n  \"doseNumber\": 1,\n  \"dateAdministered\": \"2024-06-01\",\n  \"nextDueDate\": \"2025-06-01\",\n  \"administeredBy\": \"National Hospital\"\n}"
             },
-            "url": "{{baseUrl}}/api/health-data/vaccinations"
+            "url": "{{baseUrl}}/api/health-data/vaccinations",
+            "description": "Restricted to DOCTOR or ADMIN role."
           }
         },
         {
@@ -218,10 +302,15 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/api/doctors/search?specialization=General",
+              "raw": "{{baseUrl}}/api/doctors/search?specialty=General Medicine&available=true",
               "host": ["{{baseUrl}}"],
               "path": ["api", "doctors", "search"],
-              "query": [{ "key": "specialization", "value": "General" }]
+              "query": [
+                { "key": "specialty", "value": "General Medicine" },
+                { "key": "location", "value": "Colombo", "disabled": true },
+                { "key": "available", "value": "true" },
+                { "key": "minRating", "value": "4", "disabled": true }
+              ]
             }
           }
         },
@@ -235,7 +324,44 @@
               "path": ["api", "doctors", "nearby"],
               "query": [
                 { "key": "lat", "value": "6.9271" },
-                { "key": "lng", "value": "79.8612" }
+                { "key": "lng", "value": "79.8612" },
+                { "key": "specialty", "value": "General Medicine", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Doctor by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 && !pm.collectionVariables.get('doctorId')) {",
+                  "  pm.collectionVariables.set('doctorId', pm.response.json().id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/doctors/{{doctorId}}",
+            "description": "Requires authentication."
+          }
+        },
+        {
+          "name": "Get Doctor Slots",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/doctors/{{doctorId}}/slots?from=2026-07-01T00:00:00Z&to=2026-07-31T23:59:59Z",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "doctors", "{{doctorId}}", "slots"],
+              "query": [
+                { "key": "from", "value": "2026-07-01T00:00:00Z" },
+                { "key": "to", "value": "2026-07-31T23:59:59Z" }
               ]
             }
           }
@@ -287,9 +413,17 @@
             "method": "POST",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"symptoms\": \"headache and fever for two days\"\n}"
+              "raw": "{\n  \"symptoms\": [\"headache\", \"fever for two days\"]\n}"
             },
-            "url": "{{baseUrl}}/api/ai/symptom-check"
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/symptom-check?lat=6.9271&lng=79.8612",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ai", "symptom-check"],
+              "query": [
+                { "key": "lat", "value": "6.9271" },
+                { "key": "lng", "value": "79.8612" }
+              ]
+            }
           }
         },
         {
@@ -312,6 +446,130 @@
               "raw": "{\n  \"message\": \"What vaccines do I need?\",\n  \"history\": []\n}"
             },
             "url": "{{baseUrl}}/api/ai/chat"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Healthcare (Find Care)",
+      "item": [
+        {
+          "name": "Search Facilities",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"condition\": \"chest pain\",\n  \"lat\": 6.9271,\n  \"lng\": 79.8612,\n  \"radiusKm\": 10\n}"
+            },
+            "url": "{{baseUrl}}/api/healthcare/facilities/search"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Doctor Portal",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/doctor/me",
+            "description": "Requires DOCTOR role — run Auth → Doctor Login first."
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hospital\": \"National Hospital Colombo\",\n  \"specialization\": \"General Medicine\"\n}"
+            },
+            "url": "{{baseUrl}}/api/doctor/me"
+          }
+        },
+        {
+          "name": "Set Availability",
+          "request": {
+            "method": "PATCH",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"available\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/doctor/me/availability"
+          }
+        },
+        {
+          "name": "Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/doctor/stats"
+          }
+        },
+        {
+          "name": "List Appointments",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/appointments?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "doctor", "appointments"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" },
+                { "key": "status", "value": "PENDING", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Appointment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 && !pm.collectionVariables.get('appointmentId')) {",
+                  "  pm.collectionVariables.set('appointmentId', pm.response.json().id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/doctor/appointments/{{appointmentId}}"
+          }
+        },
+        {
+          "name": "Update Appointment Status",
+          "request": {
+            "method": "PATCH",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CONFIRMED\"\n}"
+            },
+            "url": "{{baseUrl}}/api/doctor/appointments/{{appointmentId}}/status",
+            "description": "Status values: PENDING, CONFIRMED, CANCELLED, COMPLETED"
+          }
+        },
+        {
+          "name": "Get Schedule",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/doctor/schedule"
+          }
+        },
+        {
+          "name": "Update Schedule",
+          "request": {
+            "method": "PUT",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slotDurationMinutes\": 30,\n  \"days\": [\n    {\n      \"dayOfWeek\": \"MONDAY\",\n      \"enabled\": true,\n      \"startTime\": \"09:00:00\",\n      \"endTime\": \"17:00:00\"\n    },\n    {\n      \"dayOfWeek\": \"WEDNESDAY\",\n      \"enabled\": true,\n      \"startTime\": \"09:00:00\",\n      \"endTime\": \"13:00:00\"\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/doctor/schedule"
           }
         }
       ]
@@ -340,15 +598,31 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/api/admin/users/lookup?identifier=HID-LK-1990-EXAMPLE",
+              "raw": "{{baseUrl}}/api/admin/users/lookup?identifier=admin@healthid.lk",
               "host": ["{{baseUrl}}"],
               "path": ["api", "admin", "users", "lookup"],
-              "query": [{ "key": "identifier", "value": "HID-LK-1990-EXAMPLE" }]
+              "query": [{ "key": "identifier", "value": "admin@healthid.lk" }]
             }
           }
         },
         {
           "name": "List Doctors (paginated)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const page = pm.response.json();",
+                  "  if (page.content && page.content.length > 0 && !pm.collectionVariables.get('doctorId')) {",
+                  "    pm.collectionVariables.set('doctorId', page.content[0].id);",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "url": {
@@ -357,7 +631,11 @@
               "path": ["api", "admin", "doctors"],
               "query": [
                 { "key": "page", "value": "0" },
-                { "key": "size", "value": "20" }
+                { "key": "size", "value": "20" },
+                { "key": "search", "value": "", "disabled": true },
+                { "key": "specialization", "value": "", "disabled": true },
+                { "key": "verified", "value": "true", "disabled": true },
+                { "key": "sortBy", "value": "bookings", "disabled": true }
               ]
             }
           }
@@ -387,20 +665,111 @@
           }
         },
         {
+          "name": "Get Doctor",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/admin/doctors/{{doctorId}}"
+          }
+        },
+        {
+          "name": "Update Doctor",
+          "request": {
+            "method": "PUT",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hospital\": \"Teaching Hospital Kandy\",\n  \"specialization\": \"Cardiology\",\n  \"available\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/admin/doctors/{{doctorId}}"
+          }
+        },
+        {
+          "name": "Deactivate Doctor",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/admin/doctors/{{doctorId}}"
+          }
+        },
+        {
           "name": "Verify Doctor",
           "request": {
             "method": "POST",
-            "url": "{{baseUrl}}/api/admin/doctors/{{doctorId}}/verify?approved=true"
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/doctors/{{doctorId}}/verify?approved=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "doctors", "{{doctorId}}", "verify"],
+              "query": [{ "key": "approved", "value": "true" }]
+            }
+          }
+        },
+        {
+          "name": "Doctor Appointments",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/doctors/{{doctorId}}/appointments?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "doctors", "{{doctorId}}", "appointments"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            }
           }
         },
         {
           "name": "List Patients (paginated)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const page = pm.response.json();",
+                  "  if (page.content && page.content.length > 0) {",
+                  "    pm.collectionVariables.set('patientId', page.content[0].id);",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/api/admin/patients?page=0&size=20",
               "host": ["{{baseUrl}}"],
               "path": ["api", "admin", "patients"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" },
+                { "key": "search", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Patient",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/admin/patients/{{patientId}}"
+          }
+        },
+        {
+          "name": "Delete Patient",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/admin/patients/{{patientId}}"
+          }
+        },
+        {
+          "name": "Patient Appointments",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/patients/{{patientId}}/appointments?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "patients", "{{patientId}}", "appointments"],
               "query": [
                 { "key": "page", "value": "0" },
                 { "key": "size", "value": "20" }
