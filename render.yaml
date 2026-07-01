@@ -1,13 +1,13 @@
 # Render Blueprint — deploy backend from repo root via Dashboard → New → Blueprint
 # Docs: https://render.com/docs/blueprint-spec
+# Render has no native Java runtime; use Docker (see backend/Dockerfile).
 services:
   - type: web
     name: healthid-api
-    runtime: java
-    rootDir: backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
     plan: free
-    buildCommand: mvn clean package -DskipTests
-    startCommand: java -jar target/healthid-backend-1.0.0.jar
     healthCheckPath: /actuator/health
     envVars:
       - key: SPRING_PROFILES_ACTIVE

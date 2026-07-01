@@ -75,11 +75,12 @@ mongodb+srv://USER:PASS@cluster.mongodb.net/healthid?retryWrites=true&w=majority
 
 | Setting | Value |
 |---------|--------|
-| **Root Directory** | `backend` |
-| **Runtime** | Java |
-| **Build Command** | `mvn clean package -DskipTests` |
-| **Start Command** | `java -jar target/healthid-backend-1.0.0.jar` |
+| **Runtime** | **Docker** |
+| **Dockerfile Path** | `backend/Dockerfile` |
+| **Docker Build Context** | `backend` |
 | **Health Check Path** | `/actuator/health` |
+
+> Render has no native Java runtime. The [`backend/Dockerfile`](../backend/Dockerfile) builds the JAR with Maven (Java 21) and runs it in a JRE image.
 
 ### Backend environment variables (Render)
 
