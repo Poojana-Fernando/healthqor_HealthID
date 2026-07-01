@@ -133,12 +133,6 @@ export const api = {
   },
   bookAppointment: (data) => request('/api/appointments', { method: 'POST', body: JSON.stringify(data) }),
   myAppointments: () => request('/api/appointments/mine'),
-  adminUsers: (search, page = 0) => {
-    const params = new URLSearchParams({ page, size: 20 })
-    if (search) params.set('search', search)
-    return request(`/api/admin/users?${params}`)
-  },
-  adminLookup: (identifier) => request(`/api/admin/users/lookup?identifier=${encodeURIComponent(identifier)}`),
   adminVerifyDoctor: (id, approved) =>
     request(`/api/admin/doctors/${id}/verify?approved=${approved}`, { method: 'POST' }),
   adminDoctors: ({ search, specialization, verified, sortBy, page = 0, size = 20, sort } = {}) => {
