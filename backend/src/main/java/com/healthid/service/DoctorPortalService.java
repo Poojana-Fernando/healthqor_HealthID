@@ -165,7 +165,7 @@ public class DoctorPortalService {
         if (!doctor.isVerifiedByAdmin()) {
             throw new BadRequestException("Your account must be verified by admin before changing availability");
         }
-        doctor.setAvailable(request.isAvailable());
+        doctor.setAvailable(request.getAvailable());
         doctor.touchUpdatedAt();
         doctorRepository.save(doctor);
         auditLogService.log(doctor.getUserId(), "DOCTOR_SET_AVAILABILITY", "Doctor", doctor.getId());

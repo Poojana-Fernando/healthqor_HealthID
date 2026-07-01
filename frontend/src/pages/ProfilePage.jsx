@@ -15,7 +15,7 @@ import './ProfilePage.css'
 
 
 
-const TABS = ['Vaccinations', 'Medical History', 'Previous Diseases', 'AI Analysis']
+const TABS = ['Vaccinations', 'Medical History', 'Previous Diseases', 'AI Analysis', 'My Appointments']
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 
@@ -162,6 +162,8 @@ export default function ProfilePage() {
 
   const [diseases, setDiseases] = useState([])
 
+  const [appointments, setAppointments] = useState([])
+
   const [aiAnalysis, setAiAnalysis] = useState(null)
 
   const [editOpen, setEditOpen] = useState(false)
@@ -229,6 +231,8 @@ export default function ProfilePage() {
     api.getMedicalHistory().then(setHistory).catch(() => {})
 
     api.getPreviousDiseases().then(setDiseases).catch(() => {})
+
+    api.myAppointments().then(setAppointments).catch(() => {})
 
   }, [user])
 
@@ -562,6 +566,18 @@ export default function ProfilePage() {
       unit: healthScore ? 'Analysis' : 'Report',
       color: '#b280ff',
       glow: 'rgba(178, 128, 255, 0.15)',
+    },
+    {
+      title: 'My Appointments',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      ),
+      count: appointments.length,
+      unit: 'Scheduled',
+      color: '#e879f9',
+      glow: 'rgba(232, 121, 249, 0.15)',
     },
   ]
 
@@ -963,6 +979,39 @@ export default function ProfilePage() {
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {tab === 4 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {appointments.map((a) => (
+              <div key={a.id} className="pe-feature-card pe-feature-card--appointment">
+                <div className="pe-feature-card-header">
+                  <div className={`pe-feature-badge ${
+                    a.status === 'CONFIRMED' ? 'pe-feature-badge--vaccination' :
+                    a.status === 'CANCELLED' ? 'pe-feature-badge--disease' : 'pe-feature-badge--history'
+                  }`}>
+                    <span>{a.status}</span>
+                  </div>
+                  <div className="pe-feature-next-due" style={{ color: '#e879f9', background: 'rgba(232, 121, 249, 0.08)' }}>
+                    Ref: <span className="font-mono">{a.referenceNumber}</span>
+                  </div>
+                </div>
+                <h4 className="pe-feature-name">Dr. {a.doctorName}</h4>
+                <div className="pe-feature-meta" style={{ flexDirection: 'column', gap: '4px' }}>
+                  <p className="text-sm opacity-80" style={{ margin: 0 }}>{a.specialization} · {a.hospital}</p>
+                  <div className="pe-feature-meta-item mt-2">
+                    <span className="pe-feature-meta-label">Scheduled Date</span>
+                    <span className="pe-feature-meta-value">{new Date(a.scheduledAt).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {appointments.length === 0 && (
+              <div className="pe-ai-empty col-span-full">
+                <p>No appointments recorded.</p>
+              </div>
+            )}
           </div>
         )}
       </section>
