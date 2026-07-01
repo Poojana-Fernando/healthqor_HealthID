@@ -35,6 +35,9 @@ export default function PhoneVerificationModal({ mobile, onVerified }) {
       }
       setOtpSent(true)
       setMessage(res.message || 'Verification code sent')
+      if (res.devOtp) {
+        setCode(res.devOtp)
+      }
       setCooldown(RESEND_COOLDOWN_SEC)
     } catch (err) {
       setSendFailed(true)
@@ -126,6 +129,9 @@ export default function PhoneVerificationModal({ mobile, onVerified }) {
             )}
 
             {message && <p className="text-accent text-sm">{message}</p>}
+            {import.meta.env.DEV && code.length === 6 && otpSent && (
+              <p className="text-xs text-white/50">Dev OTP prefilled from backend noop provider.</p>
+            )}
             {error && <p className="text-red-400 text-sm">{error}</p>}
 
             <Button
@@ -152,7 +158,7 @@ export default function PhoneVerificationModal({ mobile, onVerified }) {
 
           {import.meta.env.DEV && (
             <p className="mt-4 text-xs text-white/40 text-center">
-              Dev mode: if Twilio is not configured, check the backend console for the OTP.
+              Dev mode: when Twilio is not configured, the OTP is logged in the backend console and may appear above.
             </p>
           )}
         </CardContent>

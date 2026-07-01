@@ -2,11 +2,7 @@ package com.healthid.service.sms;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.stereotype.Service;
 
-@Service
-@ConditionalOnMissingBean(SmsService.class)
 public class NoOpSmsService implements SmsService {
 
     private static final Logger log = LoggerFactory.getLogger(NoOpSmsService.class);
@@ -15,6 +11,11 @@ public class NoOpSmsService implements SmsService {
 
     public NoOpSmsService(CapturedSmsStore capturedSmsStore) {
         this.capturedSmsStore = capturedSmsStore;
+    }
+
+    @Override
+    public boolean isDevCaptureMode() {
+        return true;
     }
 
     @Override
