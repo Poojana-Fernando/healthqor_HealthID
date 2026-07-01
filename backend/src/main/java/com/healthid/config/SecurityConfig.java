@@ -65,6 +65,14 @@ public class SecurityConfig {
                         .authenticated()
                         .anyRequest().authenticated()
                 )
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) ->
+                                com.healthid.util.SecurityErrorResponseWriter.writeErrorResponse(
+                                        response, 401, "Authentication required"))
+                        .accessDeniedHandler((request, response, accessDeniedException) ->
+                                com.healthid.util.SecurityErrorResponseWriter.writeErrorResponse(
+                                        response, 403, "Access denied"))
+                )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

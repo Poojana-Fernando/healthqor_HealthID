@@ -188,7 +188,7 @@ class AuthIntegrationTest {
     @Test
     void profileRequiresAuth() throws Exception {
         mockMvc.perform(get("/api/profile/me"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -227,7 +227,7 @@ class AuthIntegrationTest {
                 .andExpect(cookie().maxAge(JwtFilter.REFRESH_TOKEN_COOKIE, 0));
 
         mockMvc.perform(get("/api/profile/me").cookie(accessCookie))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
