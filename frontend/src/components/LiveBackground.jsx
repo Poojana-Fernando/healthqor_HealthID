@@ -56,6 +56,7 @@ export default function LiveBackground() {
         }}
       />
 
+      {/* Video background */}
       {!screenshotMode && (
         <video
           ref={videoRef}
