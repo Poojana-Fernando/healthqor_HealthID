@@ -29,6 +29,12 @@ healthid/
 │   ├── run.ps1       # Start backend (loads ../.env)
 │   └── mvn.cmd       # Maven wrapper helper (Windows)
 ├── frontend/         # React + Vite + Tailwind + Three.js
+│   ├── vercel.json   # API proxy to Render (updated by build:vercel)
+│   └── scripts/ensure-vercel-config.mjs
+├── docs/
+│   ├── DEPLOYMENT.md # Vercel + Render hosting guide
+│   └── TWILIO_SETUP.md
+├── render.yaml       # Render Blueprint (backend)
 ├── postman/          # Postman collection & local environment
 ├── docs/screenshots/ # README screenshots
 ├── .env.example      # Environment template (copy to .env)
@@ -318,20 +324,23 @@ the project `pom.xml` is fine — your **Java/Maven environment cannot verify HT
 
 ---
 
-## Production
+## Production deployment
+
+**Recommended stack:** [Vercel](https://vercel.com) (frontend) + [Render](https://render.com) free tier (backend) + [MongoDB Atlas](https://www.mongodb.com/atlas).
+
+The browser must see **one origin** (Vercel proxies `/api/*` to Render) so JWT cookies and CSRF keep working.
+
+**Full step-by-step guide:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+
+Quick local production build:
 
 ```bash
-SPRING_PROFILES_ACTIVE=prod mvn spring-boot:run
+cd backend && mvn clean package -DskipTests
+SPRING_PROFILES_ACTIVE=prod java -jar target/healthid-backend-1.0.0.jar
+
+cd frontend && npm run build
+# serve frontend/dist behind a reverse proxy that also forwards /api to the backend
 ```
-
-Build frontend for production:
-
-```bash
-cd frontend
-npm run build
-```
-
-Serve `frontend/dist` behind a reverse proxy and point it at your API origin.
 
 ---
 
