@@ -344,13 +344,38 @@ export default function HomePage() {
         <h2 className="text-3xl font-bold mb-8 tracking-tight">Personalised Health Guidance</h2>
         <div className="grid md:grid-cols-3 gap-8">
           {[
-            { title: 'Vaccination Tracker', desc: 'Keep all your immunisation records in one secure place.' },
-            { title: 'BMI & Vitals', desc: 'Monitor your body metrics with doctor-verified data.' },
-            { title: 'AI Health Analysis', desc: 'Get personalised lifestyle tips and checkup reminders.' },
+            {
+              title: '3D HealthID & AI Diagnostics',
+              desc: 'Explore your interactive 3D humanoid body map and trigger the AI Diagnostic Engine for custom recommendations.',
+              path: '/profile',
+              btnText: 'View 3D Profile'
+            },
+            {
+              title: 'E-Channeling & Appointment Booking',
+              desc: 'Search for specialized doctors, check live availability, and book slots instantly with automated confirmation.',
+              path: '/echanneling',
+              btnText: 'Book Appointment'
+            },
+            {
+              title: 'Interactive Facility & Route Map',
+              desc: 'Locate nearby hospitals and care clinics on a dynamic map with automated route finding and navigation help.',
+              path: '/find-care',
+              btnText: 'Find Care Map'
+            },
           ].map((card) => (
-            <div key={card.title} className="premium-glass rounded-2xl p-8 hover:shadow-glass-glow transition-all duration-300 hover:-translate-y-0.5">
-              <h3 className="font-semibold text-accent2 mb-2">{card.title}</h3>
-              <p className="text-sm opacity-70">{card.desc}</p>
+            <div
+              key={card.title}
+              onClick={() => navigate(card.path)}
+              className="premium-glass rounded-2xl p-8 hover:shadow-glass-glow transition-all duration-300 hover:-translate-y-0.5 cursor-pointer flex flex-col justify-between h-full group"
+            >
+              <div>
+                <h3 className="font-semibold text-accent2 mb-2">{card.title}</h3>
+                <p className="text-sm opacity-70 mb-6">{card.desc}</p>
+              </div>
+              <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent transition-all duration-300 group-hover:text-accent2 mt-auto">
+                <span>{card.btnText}</span>
+                <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+              </div>
             </div>
           ))}
         </div>

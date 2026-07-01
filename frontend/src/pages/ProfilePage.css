@@ -233,6 +233,45 @@ html, body {
   word-break: break-all;
 }
 
+.pe-hid-value-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pe-hid-copy-btn {
+  background: transparent;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.4);
+  transition: all 0.2s ease;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.pe-hid-copy-btn:hover {
+  color: var(--pe-accent);
+  background-color: rgba(29, 201, 127, 0.08);
+}
+
+.pe-hid-copy-btn:active {
+  transform: scale(0.9);
+}
+
+.pe-hid-copy-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.pe-hid-copy-icon--success {
+  color: var(--pe-accent);
+}
+
 .pe-meta-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1235,11 +1274,12 @@ html, body {
   flex: 1;
   background: var(--pe-accent);
   color: var(--pe-bg);
-  border: none;
+  border: 0.5px solid transparent;
   border-radius: 7px;
   padding: 8px;
   font-weight: 500;
   cursor: pointer;
+  transition: all 0.3s ease;
 }
 
 .pe-edit-save:disabled {
@@ -1255,6 +1295,23 @@ html, body {
   border-radius: 7px;
   padding: 8px;
   cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.pe-edit-actions .pe-edit-save:not(:disabled):hover {
+  background-color: var(--pe-accent);
+}
+
+.pe-edit-actions .pe-edit-cancel:not(:disabled):hover {
+  background-color: var(--pe-accent);
+  color: var(--pe-bg);
+  border-color: transparent;
+}
+
+.pe-edit-actions:has(.pe-edit-cancel:not(:disabled):hover) .pe-edit-save {
+  background-color: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  border-color: var(--pe-border);
 }
 
 .pe-loading {
