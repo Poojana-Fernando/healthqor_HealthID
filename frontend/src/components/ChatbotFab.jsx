@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useChatbot } from '../context/ChatbotContext'
 import { api } from '../api/client'
 import LoadingButton from './ui/LoadingButton'
 import HealthIdLoadingIcon from './ui/HealthIdLoadingIcon'
@@ -17,7 +18,9 @@ function buildHistory(messages, userMsg) {
 
 export default function ChatbotFab() {
   const { user } = useAuth()
-  const [open, setOpen] = useState(false)
+  const { isOpen, setIsOpen, toggleChat } = useChatbot()
+  const open = isOpen
+  const setOpen = setIsOpen
   const [messages, setMessages] = useState([{ role: 'assistant', content: WELCOME }])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -148,7 +151,7 @@ export default function ChatbotFab() {
 
       <button
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={toggleChat}
         className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-accent hover:bg-accent2 shadow-lg flex items-center justify-center text-2xl z-50 transition"
         aria-label="Open medical assistant chat"
       >

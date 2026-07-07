@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 import { useAuth } from '../context/AuthContext'
 
 import { api } from '../api/client'
+import { markReportsSeen } from '../utils/homepageStorage'
 
 import HumanoidFigure from '../components/HumanoidFigure'
 import OrganDetailsCard from '../components/OrganDetailsCard'
@@ -118,8 +119,9 @@ export default function ProfilePage() {
   const { user, profile, loading, refreshProfile } = useAuth()
 
   const navigate = useNavigate()
+  const location = useLocation()
 
-  const [tab, setTab] = useState(0)
+  const [tab, setTab] = useState(() => location.state?.tab ?? 0)
 
   const [medicalReports, setMedicalReports] = useState([])
 
@@ -184,6 +186,18 @@ export default function ProfilePage() {
     if (!loading && !user) navigate('/login')
 
   }, [user, loading, navigate])
+
+  useEffect(() => {
+    if (location.state?.tab != null) {
+      setTab(location.state.tab)
+    }
+  }, [location.state?.tab])
+
+  useEffect(() => {
+    if (tab === 0) {
+      markReportsSeen()
+    }
+  }, [tab])
 
 
 
