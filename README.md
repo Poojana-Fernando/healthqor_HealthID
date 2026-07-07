@@ -33,12 +33,10 @@ healthid/
 │   └── mvn.cmd       # Maven wrapper helper (Windows)
 ├── frontend/         # React + Vite + Tailwind + Three.js + Leaflet
 │   ├── vercel.json   # API proxy to Render (updated by build:vercel)
-│   ├── netlify.toml  # Netlify build config (use build:netlify)
 │   ├── scripts/ensure-vercel-config.mjs
-│   ├── scripts/ensure-netlify-config.mjs
 │   └── src/components/healthcare/   # Find Care map, facility cards, condition picker
 ├── docs/
-│   ├── DEPLOYMENT.md # Render + Vercel or Netlify hosting guide
+│   ├── DEPLOYMENT.md # Vercel + Render hosting guide
 │   ├── TWILIO_SETUP.md
 │   └── screenshots/  # README screenshots
 ├── render.yaml       # Render Blueprint (backend)
@@ -391,9 +389,9 @@ the project `pom.xml` is fine — your **Java/Maven environment cannot verify HT
 
 ## Production deployment
 
-**Recommended stack:** [Render](https://render.com) free tier (backend) + [Vercel](https://vercel.com) or [Netlify](https://netlify.com) (frontend) + [MongoDB Atlas](https://www.mongodb.com/atlas).
+**Recommended stack:** [Vercel](https://vercel.com) (frontend) + [Render](https://render.com) free tier (backend) + [MongoDB Atlas](https://www.mongodb.com/atlas).
 
-The browser must see **one origin** (frontend proxies `/api/*` to Render) so JWT cookies and CSRF keep working.
+The browser must see **one origin** (Vercel proxies `/api/*` to Render) so JWT cookies and CSRF keep working.
 
 **Full step-by-step guide:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
