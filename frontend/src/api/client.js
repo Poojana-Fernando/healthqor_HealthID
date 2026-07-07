@@ -151,6 +151,16 @@ export const api = {
   getVaccinations: () => request('/api/health-data/vaccinations'),
   getMedicalHistory: () => request('/api/health-data/medical-history'),
   getPreviousDiseases: () => request('/api/health-data/previous-diseases'),
+  getMedicalReports: () => request('/api/health-data/medical-reports'),
+  getActivePrescriptions: () => request('/api/health-data/prescriptions/active'),
+  getAllPrescriptions: () => request('/api/health-data/prescriptions'),
+  getVitalsHistory: () => request('/api/health-data/vitals-history'),
+  analyzeReportImage: (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return submitMultipart('/api/ai/analyze-report', formData)
+  },
+  getReportAnalysisHistory: () => request('/api/ai/analyze-report/history'),
   symptomCheck: (symptoms, lat, lng) => {
     const params = new URLSearchParams()
     if (lat != null) params.set('lat', lat)
@@ -225,6 +235,8 @@ export const api = {
   doctorAppointment: (id) => request(`/api/doctor/appointments/${id}`),
   doctorUpdateAppointmentStatus: (id, data) =>
     request(`/api/doctor/appointments/${id}/status`, { method: 'PATCH', body: JSON.stringify(data) }),
+  doctorCompleteAppointment: (id, data) =>
+    request(`/api/doctor/appointments/${id}/complete`, { method: 'POST', body: JSON.stringify(data) }),
   doctorSchedule: () => request('/api/doctor/schedule'),
   doctorUpdateSchedule: (data) => request('/api/doctor/schedule', { method: 'PUT', body: JSON.stringify(data) }),
   doctorSlots: (doctorId, from, to) => {

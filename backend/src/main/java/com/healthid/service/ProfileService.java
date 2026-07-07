@@ -25,16 +25,19 @@ public class ProfileService {
     private final HealthProfileRepository healthProfileRepository;
     private final AuditLogService auditLogService;
     private final EncryptionService encryptionService;
+    private final VitalsSnapshotService vitalsSnapshotService;
 
     public ProfileService(
             UserRepository userRepository,
             HealthProfileRepository healthProfileRepository,
             AuditLogService auditLogService,
-            EncryptionService encryptionService) {
+            EncryptionService encryptionService,
+            VitalsSnapshotService vitalsSnapshotService) {
         this.userRepository = userRepository;
         this.healthProfileRepository = healthProfileRepository;
         this.auditLogService = auditLogService;
         this.encryptionService = encryptionService;
+        this.vitalsSnapshotService = vitalsSnapshotService;
     }
 
     @Transactional(readOnly = true)
@@ -81,10 +84,17 @@ public class ProfileService {
         if (request.getAllergies() != null) {
             profile.setAllergies(encryptionService.encryptOptional(String.join(",", request.getAllergies())));
         }
+        if (request.getEmergencyContactName() != null) {
+            profile.setEmergencyContactName(request.getEmergencyContactName());
+        }
+        if (request.getEmergencyContactPhone() != null) {
+            profile.setEmergencyContactPhone(request.getEmergencyContactPhone());
+        }
 
         profile.setBmi(calculateBmi(profile.getHeightCm(), profile.getWeightKg()));
         userRepository.save(user);
         healthProfileRepository.save(profile);
+        vitalsSnapshotService.recordIfChanged(user.getId(), profile.getHeightCm(), profile.getWeightKg(), profile.getBmi());
 
         auditLogService.log(user.getId(), "UPDATE", "HealthProfile", profile.getId());
         return mapProfile(user, profile);
@@ -114,6 +124,8 @@ public class ProfileService {
                 .allergies(parseAllergies(encryptionService.decryptOptional(profile.getAllergies())))
                 .aiHealthScore(profile.getAiHealthScore())
                 .lastAiAnalysis(profile.getLastAiAnalysis())
+                .emergencyContactName(profile.getEmergencyContactName())
+                .emergencyContactPhone(profile.getEmergencyContactPhone())
                 .build();
     }
 

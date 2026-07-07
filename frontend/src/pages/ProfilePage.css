@@ -395,6 +395,50 @@ html, body {
   color: var(--pe-warn);
 }
 
+.pe-summary-row--block {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.pe-summary-value--multiline {
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.pe-summary-view-all {
+  margin-top: 12px;
+  width: 100%;
+  padding: 8px 0;
+  font-size: 12px;
+  color: #1dc97f;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.pe-summary-view-all:hover {
+  text-decoration: underline;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .pe-health-summary-print,
+  .pe-health-summary-print * {
+    visibility: visible;
+  }
+  .pe-health-summary-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
+
 /* Center — viewport */
 .pe-scan-viewport {
   flex: 1;
@@ -780,7 +824,7 @@ html, body {
 
 .pe-tabs-nav {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 16px;
   margin-bottom: 24px;
 }

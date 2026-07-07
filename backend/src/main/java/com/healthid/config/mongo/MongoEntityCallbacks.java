@@ -25,6 +25,12 @@ public class MongoEntityCallbacks implements BeforeConvertCallback<Object> {
             auditLog.prepareForPersist();
         } else if (entity instanceof PhoneVerificationChallenge challenge) {
             challenge.prepareForPersist();
+        } else if (entity instanceof MedicalReport report) {
+            report.prepareForPersist();
+        } else if (entity instanceof VitalsSnapshot snapshot) {
+            snapshot.prepareForPersist();
+        } else if (entity instanceof ExternalReportAnalysis analysis) {
+            analysis.prepareForPersist();
         }
         return entity;
     }

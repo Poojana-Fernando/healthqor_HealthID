@@ -212,7 +212,7 @@ public class DoctorPortalService {
         }
         boolean allowed = switch (current) {
             case PENDING -> next == AppointmentStatus.CONFIRMED || next == AppointmentStatus.CANCELLED;
-            case CONFIRMED -> next == AppointmentStatus.COMPLETED || next == AppointmentStatus.CANCELLED;
+            case CONFIRMED -> next == AppointmentStatus.CANCELLED;
             case CANCELLED, COMPLETED -> false;
         };
         if (!allowed) {

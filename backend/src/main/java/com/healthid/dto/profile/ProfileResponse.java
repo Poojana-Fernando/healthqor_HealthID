@@ -38,4 +38,7 @@ public class ProfileResponse {
 
     private String aiHealthScore;
     private Instant lastAiAnalysis;
+
+    private String emergencyContactName;
+    private String emergencyContactPhone;
 }

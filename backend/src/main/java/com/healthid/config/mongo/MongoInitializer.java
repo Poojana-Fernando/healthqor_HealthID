@@ -40,6 +40,9 @@ public class MongoInitializer implements ApplicationRunner {
         ensureCollection(database, "email_verification_challenges", emailVerificationChallengesValidator());
         ensureCollection(database, "pending_registrations", pendingRegistrationsValidator());
         ensureCollection(database, "phone_verification_challenges", phoneVerificationChallengesValidator());
+        ensureCollection(database, "medical_reports", medicalReportsValidator());
+        ensureCollection(database, "vitals_snapshots", vitalsSnapshotsValidator());
+        ensureCollection(database, "report_analyses", reportAnalysesValidator());
         log.info("MongoDB collections and validators initialized");
     }
 
@@ -206,6 +209,41 @@ public class MongoInitializer implements ApplicationRunner {
                         .append("nationalId", new Document("bsonType", "binData"))
                         .append("healthId", new Document("bsonType", "string"))
                         .append("expiresAt", new Document("bsonType", "date"))
+                        .append("createdAt", new Document("bsonType", "date"))));
+    }
+
+    private Document medicalReportsValidator() {
+        return new Document("$jsonSchema", new Document()
+                .append("bsonType", "object")
+                .append("required", java.util.List.of("appointmentId", "patientId", "doctorId", "createdAt"))
+                .append("properties", new Document()
+                        .append("appointmentId", new Document("bsonType", "string"))
+                        .append("patientId", new Document("bsonType", "string"))
+                        .append("doctorId", new Document("bsonType", "string"))
+                        .append("followUpDate", new Document("bsonType", "date"))
+                        .append("visitDate", new Document("bsonType", "date"))
+                        .append("createdAt", new Document("bsonType", "date"))));
+    }
+
+    private Document vitalsSnapshotsValidator() {
+        return new Document("$jsonSchema", new Document()
+                .append("bsonType", "object")
+                .append("required", java.util.List.of("userId", "recordedAt"))
+                .append("properties", new Document()
+                        .append("userId", new Document("bsonType", "string"))
+                        .append("recordedAt", new Document("bsonType", "date"))));
+    }
+
+    private Document reportAnalysesValidator() {
+        return new Document("$jsonSchema", new Document()
+                .append("bsonType", "object")
+                .append("required", java.util.List.of("userId", "createdAt"))
+                .append("properties", new Document()
+                        .append("userId", new Document("bsonType", "string"))
+                        .append("gridFsFileId", new Document("bsonType", "string"))
+                        .append("fileName", new Document("bsonType", "string"))
+                        .append("contentType", new Document("bsonType", "string"))
+                        .append("aiSummary", new Document("bsonType", "string"))
                         .append("createdAt", new Document("bsonType", "date"))));
     }
 }

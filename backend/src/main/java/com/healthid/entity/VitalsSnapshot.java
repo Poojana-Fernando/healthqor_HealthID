@@ -7,56 +7,35 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.UUID;
 
-@Document(collection = "health_profiles")
+@Document(collection = "vitals_snapshots")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class HealthProfile {
+public class VitalsSnapshot {
 
     @Id
     private String id;
 
-    @Indexed(unique = true)
+    @Indexed
     private String userId;
 
-    @Builder.Default
-    private Gender gender = Gender.MALE;
-
-    private String bloodType;
-
     private BigDecimal heightCm;
-
     private BigDecimal weightKg;
-
     private BigDecimal bmi;
 
-    private LocalDate birthDate;
-
-    private String eyesightLeft;
-
-    private String eyesightRight;
-
-    private byte[] allergies;
-
-    @Builder.Default
-    private boolean doctorVerified = false;
-
-    private String aiHealthScore;
-
-    private Instant lastAiAnalysis;
-
-    private String emergencyContactName;
-
-    private String emergencyContactPhone;
+    @Indexed
+    private Instant recordedAt;
 
     public void prepareForPersist() {
         if (id == null) {
             id = UUID.randomUUID().toString();
+        }
+        if (recordedAt == null) {
+            recordedAt = Instant.now();
         }
     }
 }

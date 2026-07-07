@@ -2,6 +2,8 @@ package com.healthid.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.healthid.dto.ai.ChatMessageDto;
 import com.healthid.dto.ai.ChatRequest;
 import com.healthid.dto.ai.ChatResponse;
@@ -33,8 +35,16 @@ import org.springframework.http.*;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
+import javax.imageio.ImageIO;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.*;
@@ -46,6 +56,7 @@ public class AIService {
     private static final Logger log = LoggerFactory.getLogger(AIService.class);
 
     private final RestTemplate restTemplate = createRestTemplate();
+    private final RestTemplate visionRestTemplate = createVisionRestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final UserRepository userRepository;
     private final HealthProfileRepository healthProfileRepository;
@@ -468,6 +479,13 @@ public class AIService {
         return new RestTemplate(factory);
     }
 
+    private static RestTemplate createVisionRestTemplate() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(15_000);
+        factory.setReadTimeout(120_000);
+        return new RestTemplate(factory);
+    }
+
     private String fallbackResponse(String systemPrompt, String userPrompt) {
         if (systemPrompt.contains("Health ID Sri Lanka medical assistant")) {
             String lower = userPrompt.toLowerCase();
@@ -534,5 +552,249 @@ public class AIService {
             return objectMapper.readTree(text.substring(start, end + 1));
         }
         throw new BadRequestException("Invalid AI response");
+    }
+
+    public String analyzeReportImage(byte[] imageBytes, String contentType) {
+        String mime = normalizeVisionContentType(contentType);
+        if (mime == null) {
+            return unsupportedFormatMessage(contentType);
+        }
+        if ("application/pdf".equals(mime)) {
+            return pdfNotSupportedMessage();
+        }
+
+        byte[] preparedBytes;
+        try {
+            preparedBytes = prepareImageForVision(imageBytes, mime);
+        } catch (IOException e) {
+            log.warn("Failed to prepare report image for vision: {}", e.getMessage());
+            return visionFailureMessage("The image could not be processed. Try a clear JPEG or PNG photo.");
+        }
+
+        String base64 = Base64.getEncoder().encodeToString(preparedBytes);
+        String dataUrl = "data:" + mime + ";base64," + base64;
+
+        String systemPrompt = """
+                You are a medical report assistant for Health ID Sri Lanka. Analyze the uploaded lab or medical report image.
+                Provide a plain-language summary for a patient who may not understand medical terminology.
+                Structure your response with these sections using markdown headers:
+                ## Summary
+                ## Key Values & Findings
+                ## Items to Discuss with Your Doctor
+                ## Disclaimer
+                Always end with a clear disclaimer that this is not a medical diagnosis and the patient must consult a licensed doctor.
+                """;
+
+        ObjectNode body = objectMapper.createObjectNode();
+        body.put("model", model);
+        body.put("max_tokens", 2000);
+        body.put("temperature", 0.3);
+
+        ArrayNode messages = body.putArray("messages");
+        messages.addObject()
+                .put("role", "system")
+                .put("content", systemPrompt);
+
+        ArrayNode userContent = messages.addObject()
+                .put("role", "user")
+                .putArray("content");
+        userContent.addObject()
+                .put("type", "text")
+                .put("text", "Please analyze this external medical/lab report and explain it in simple terms.");
+        userContent.addObject()
+                .put("type", "image_url")
+                .putObject("image_url")
+                .put("url", dataUrl)
+                .put("detail", preparedBytes.length > 1_500_000 ? "low" : "auto");
+
+        return callOpenAIMultimodal(body);
+    }
+
+    private String normalizeVisionContentType(String contentType) {
+        if (contentType == null || contentType.isBlank()) {
+            return "image/jpeg";
+        }
+        String mime = contentType.toLowerCase(Locale.ROOT).split(";")[0].trim();
+        return switch (mime) {
+            case "image/jpg", "image/pjpeg" -> "image/jpeg";
+            case "image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf" -> mime;
+            default -> mime.startsWith("image/") ? mime : null;
+        };
+    }
+
+    private byte[] prepareImageForVision(byte[] imageBytes, String mime) throws IOException {
+        if (!mime.startsWith("image/")) {
+            return imageBytes;
+        }
+        BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageBytes));
+        if (image == null) {
+            return imageBytes;
+        }
+
+        int maxDim = 2048;
+        int width = image.getWidth();
+        int height = image.getHeight();
+        boolean needsResize = width > maxDim || height > maxDim || imageBytes.length > 3 * 1024 * 1024;
+        if (!needsResize) {
+            return imageBytes;
+        }
+
+        double scale = Math.min(1.0, Math.min((double) maxDim / width, (double) maxDim / height));
+        int targetWidth = Math.max(1, (int) Math.round(width * scale));
+        int targetHeight = Math.max(1, (int) Math.round(height * scale));
+
+        int imageType = image.getTransparency() == BufferedImage.OPAQUE
+                ? BufferedImage.TYPE_INT_RGB
+                : BufferedImage.TYPE_INT_ARGB;
+        BufferedImage resized = new BufferedImage(targetWidth, targetHeight, imageType);
+        Graphics2D graphics = resized.createGraphics();
+        graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        graphics.drawImage(image, 0, 0, targetWidth, targetHeight, null);
+        graphics.dispose();
+
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        String format = "image/png".equals(mime) ? "png" : "jpeg";
+        if (!ImageIO.write(resized, format, output)) {
+            return imageBytes;
+        }
+        return output.toByteArray();
+    }
+
+    private String callOpenAIMultimodal(ObjectNode body) {
+        if (apiKey == null || apiKey.isBlank() || isPlaceholderApiKey(apiKey)) {
+            return """
+                    ## Summary
+                    OpenAI API key is not configured. Upload saved successfully.
+
+                    ## Details
+                    Set a valid OPENAI_API_KEY in the project .env file and restart the backend.
+
+                    ## Disclaimer
+                    This is not a medical diagnosis. Please consult a licensed doctor to interpret your lab report.
+                    """;
+        }
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(apiKey);
+
+            String payload = objectMapper.writeValueAsString(body);
+            ResponseEntity<String> response = visionRestTemplate.exchange(
+                    apiUrl,
+                    HttpMethod.POST,
+                    new HttpEntity<>(payload, headers),
+                    String.class
+            );
+
+            JsonNode root = objectMapper.readTree(response.getBody());
+            JsonNode errorNode = root.path("error").path("message");
+            if (!errorNode.isMissingNode() && !errorNode.asText("").isBlank()) {
+                log.warn("OpenAI vision API error: {}", errorNode.asText());
+                return visionFailureMessage(parseOpenAiError(errorNode.asText()));
+            }
+
+            JsonNode choices = root.path("choices");
+            if (!choices.isArray() || choices.isEmpty()) {
+                return visionFailureMessage("No analysis was returned.");
+            }
+
+            JsonNode message = choices.get(0).path("message");
+            String refusal = message.path("refusal").asText("").trim();
+            if (!refusal.isBlank()) {
+                return visionFailureMessage(refusal);
+            }
+
+            String reply = message.path("content").asText("").trim();
+            if (reply.isBlank()) {
+                return visionFailureMessage("No analysis was returned.");
+            }
+            return reply;
+        } catch (HttpStatusCodeException e) {
+            String apiMessage = extractOpenAiErrorMessage(e);
+            log.warn("OpenAI vision request failed ({}): {}", e.getStatusCode(), apiMessage);
+            return visionFailureMessage(parseOpenAiError(apiMessage));
+        } catch (Exception e) {
+            log.warn("OpenAI vision request failed: {}", e.getMessage());
+            return visionFailureMessage("The analysis service is temporarily unavailable.");
+        }
+    }
+
+    private String extractOpenAiErrorMessage(HttpStatusCodeException exception) {
+        try {
+            JsonNode root = objectMapper.readTree(exception.getResponseBodyAsString());
+            String message = root.path("error").path("message").asText("").trim();
+            if (!message.isBlank()) {
+                return message;
+            }
+        } catch (Exception ignored) {
+            // Fall back to status text below.
+        }
+        return exception.getStatusText();
+    }
+
+    private String parseOpenAiError(String apiMessage) {
+        if (apiMessage == null || apiMessage.isBlank()) {
+            return "The analysis service returned an error.";
+        }
+        String lower = apiMessage.toLowerCase(Locale.ROOT);
+        if (lower.contains("incorrect api key") || lower.contains("invalid_api_key")
+                || lower.contains("api key provided")) {
+            return "The OpenAI API key is missing or invalid. Set a valid OPENAI_API_KEY in the project .env file and restart the backend.";
+        }
+        if (lower.contains("unsupported image") || lower.contains("invalid image")
+                || lower.contains("could not process image")) {
+            return "This image format is not supported. Upload a clear JPEG or PNG photo of the report.";
+        }
+        if (lower.contains("maximum context length") || lower.contains("too large")) {
+            return "The image is too large to analyze. Try a smaller or more compressed photo.";
+        }
+        return apiMessage;
+    }
+
+    private String unsupportedFormatMessage(String contentType) {
+        return visionFailureMessage(
+                "Unsupported file type"
+                        + (contentType != null ? " (" + contentType + ")" : "")
+                        + ". Upload a JPEG, PNG, GIF, or WebP photo of the report.");
+    }
+
+    private String pdfNotSupportedMessage() {
+        return """
+                ## Summary
+                PDF analysis is not supported yet. Your file was saved, but AI could not read it directly.
+
+                ## What you can try
+                - Take a clear photo of the report pages (JPEG or PNG) and upload that instead
+                - Ensure lighting is good and all text is readable
+
+                ## Disclaimer
+                This is not a medical diagnosis. Please consult a licensed doctor to interpret your lab report.
+                """;
+    }
+
+    private String visionFailureMessage(String reason) {
+        return """
+                ## Summary
+                We could not analyze this report automatically.
+
+                ## Details
+                %s
+
+                ## What you can try
+                - Upload a clear JPEG or PNG photo of the report (not PDF)
+                - Make sure the image is well-lit and text is readable
+                - Try a smaller file under 5 MB
+
+                ## Disclaimer
+                This is not a medical diagnosis. Please consult a licensed doctor to interpret your lab report.
+                """.formatted(reason);
+    }
+
+    private boolean isPlaceholderApiKey(String key) {
+        String normalized = key.trim().toLowerCase(Locale.ROOT);
+        return normalized.startsWith("your_")
+                || normalized.contains("placeholder")
+                || normalized.equals("sk-your-key-here")
+                || normalized.equals("changeme");
     }
 }
