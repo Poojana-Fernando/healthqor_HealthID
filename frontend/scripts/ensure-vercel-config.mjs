@@ -33,6 +33,10 @@ const config = {
       source: '/actuator/:path*',
       destination: `${base}/actuator/:path*`,
     },
+    {
+      source: '/((?!api/|actuator/|assets/|models/).*)',
+      destination: '/index.html',
+    },
   ],
 }
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Loader2, X } from 'lucide-react'
 import { api } from '../../api/client'
 import { Button } from '../ui/Button'
+import CompleteVisitModal from './CompleteVisitModal'
 
 const STATUS_TABS = ['', 'PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED']
 
@@ -12,6 +13,7 @@ export default function DoctorAppointments() {
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState(null)
   const [updating, setUpdating] = useState(null)
+  const [completeTarget, setCompleteTarget] = useState(null)
 
   const getRange = () => {
     if (rangeFilter === 'today') {
@@ -157,7 +159,7 @@ export default function DoctorAppointments() {
                         type="button"
                         className="text-accent text-xs"
                         disabled={updating === a.id}
-                        onClick={() => updateStatus(a.id, 'COMPLETED')}
+                        onClick={() => setCompleteTarget(a)}
                       >
                         Complete
                       </button>
@@ -204,11 +206,21 @@ export default function DoctorAppointments() {
                 </>
               )}
               {selected.status === 'CONFIRMED' && (
-                <Button type="button" onClick={() => updateStatus(selected.id, 'COMPLETED')}>Mark completed</Button>
+                <Button type="button" onClick={() => setCompleteTarget(selected)}>Mark completed</Button>
               )}
             </div>
           </div>
         </div>
+      )}
+      {completeTarget && (
+        <CompleteVisitModal
+          appointment={completeTarget}
+          onClose={() => setCompleteTarget(null)}
+          onCompleted={() => {
+            setSelected(null)
+            loadAppointments()
+          }}
+        />
       )}
     </div>
   )

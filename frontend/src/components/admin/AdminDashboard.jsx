@@ -19,6 +19,7 @@ export default function AdminDashboard() {
     { label: 'Total Doctors', value: stats.totalDoctors },
     { label: 'Appointments Today', value: stats.appointmentsToday },
     { label: 'Pending Verifications', value: stats.pendingDoctorVerifications },
+    { label: 'Open Support Tickets', value: stats.openSupportTickets ?? 0 },
     { label: 'Cancelled Today', value: stats.cancelledToday },
     { label: 'Audit Logs', value: stats.totalAuditLogs },
   ]

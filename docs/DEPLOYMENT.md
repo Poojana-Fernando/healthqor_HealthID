@@ -197,11 +197,12 @@ No setup — used by **Find Care** (`HealthcareFacilityService`).
 | 2 | DevTools → Cookies on Vercel domain — `XSRF-TOKEN` appears after load | |
 | 3 | Register → Brevo email received → verify → login | |
 | 4 | `/profile` loads when logged in | |
-| 5 | Google login (if configured) | |
-| 6 | Admin login (`ADMIN_EMAIL`) → `/admin` | |
-| 7 | e-Channeling doctor search (seed doctors via Admin first) | |
-| 8 | AI symptom check (authenticated) | |
-| 9 | Logout clears session | |
+| 5 | `/find-care` loads when logged in (map + facility search) | |
+| 6 | Google login (if configured) | |
+| 7 | Admin login (`ADMIN_EMAIL`) → `/admin` | |
+| 8 | e-Channeling doctor search (seed doctors via Admin first) | |
+| 9 | AI symptom check / chat (authenticated) | |
+| 10 | Logout clears session | |
 
 ### Common failures
 

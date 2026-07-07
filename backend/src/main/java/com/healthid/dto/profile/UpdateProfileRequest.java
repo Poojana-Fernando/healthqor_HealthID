@@ -27,4 +27,7 @@ public class UpdateProfileRequest {
     private String eyesightLeft;
     private String eyesightRight;
     private List<String> allergies;
+
+    private String emergencyContactName;
+    private String emergencyContactPhone;
 }

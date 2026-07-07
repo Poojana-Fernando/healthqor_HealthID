@@ -1,9 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import AnimatedLogo from './AnimatedLogo'
 
 export default function Navbar() {
   const { user, logout } = useAuth()
+  const { language, setLanguage } = useLanguage()
   const navigate = useNavigate()
 
   const handleLogout = async () => {
@@ -39,6 +41,24 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-3">
+          <div className="flex items-center rounded-full border border-emerald-400/30 bg-emerald-500/10 text-xs overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setLanguage('en')}
+              className={`px-2.5 py-1 transition ${language === 'en' ? 'bg-emerald-500/25 text-accent2 font-semibold' : 'opacity-60 hover:opacity-100'}`}
+              aria-label="English"
+            >
+              EN
+            </button>
+            <button
+              type="button"
+              onClick={() => setLanguage('si')}
+              className={`px-2.5 py-1 transition ${language === 'si' ? 'bg-emerald-500/25 text-accent2 font-semibold' : 'opacity-60 hover:opacity-100'}`}
+              aria-label="Sinhala"
+            >
+              සිංහල
+            </button>
+          </div>
           {user ? (
             <>
               <Link to="/profile" className="flex items-center gap-2 glass px-3 py-1.5 rounded-full hover:border-accent/50 transition">

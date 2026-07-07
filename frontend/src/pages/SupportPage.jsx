@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { api } from '../api/client'
 import LoadingButton from '../components/ui/LoadingButton'
 
 const SITE_FEATURES = [
@@ -185,19 +186,27 @@ export default function SupportPage() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(null)
   const [tickets, setTickets] = useState([])
+  const [ticketError, setTicketError] = useState('')
   const fileInputRef = useRef(null)
 
-  // Load user tickets from localStorage on mount
-  useEffect(() => {
-    const savedTickets = localStorage.getItem('healthid_support_tickets')
-    if (savedTickets) {
-      try {
-        setTickets(JSON.parse(savedTickets))
-      } catch (e) {
-        console.error('Error parsing saved tickets', e)
-      }
+  const loadMyTickets = useCallback(async () => {
+    if (!user) {
+      setTickets([])
+      return
     }
-  }, [])
+    try {
+      const res = await api.mySupportTickets(0)
+      setTickets(res.content || [])
+      setTicketError('')
+    } catch (err) {
+      setTickets([])
+      setTicketError(err.message || 'Could not load your tickets')
+    }
+  }, [user])
+
+  useEffect(() => {
+    loadMyTickets()
+  }, [loadMyTickets])
 
   // Auto-fill form fields when user auth state changes
   useEffect(() => {
@@ -222,11 +231,7 @@ export default function SupportPage() {
         alert('File size exceeds the 5MB limit.')
         return
       }
-      setAttachment({
-        name: file.name,
-        size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
-        type: file.type
-      })
+      setAttachment(file)
     }
   }
 
@@ -237,7 +242,7 @@ export default function SupportPage() {
     }
   }
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault()
     if (!subject.trim() || !message.trim() || !customName.trim() || !customEmail.trim()) {
       alert('Please fill out all required fields.')
@@ -245,50 +250,43 @@ export default function SupportPage() {
     }
 
     setLoading(true)
+    setTicketError('')
 
-    // Simulate server response delay
-    setTimeout(() => {
-      const ticketId = 'HQ-' + Math.floor(100000 + Math.random() * 900000)
-      const newTicket = {
-        id: ticketId,
-        name: customName,
-        email: customEmail,
-        subject,
-        category,
-        priority,
-        message,
-        attachmentName: attachment ? attachment.name : null,
-        status: 'Received',
-        createdAt: new Date().toLocaleString(),
-      }
-
-      const updatedTickets = [newTicket, ...tickets]
-      setTickets(updatedTickets)
-      localStorage.setItem('healthid_support_tickets', JSON.stringify(updatedTickets))
+    try {
+      const res = await api.submitSupportTicket(
+        {
+          name: customName.trim(),
+          email: customEmail.trim(),
+          subject: subject.trim(),
+          category,
+          priority,
+          message: message.trim(),
+        },
+        attachment
+      )
 
       setSuccess({
-        id: ticketId,
-        subject,
-        category,
-        priority,
-        createdAt: newTicket.createdAt
+        id: res.ticketNumber,
+        subject: res.subject,
+        category: res.category,
+        priority: res.priority,
+        createdAt: new Date(res.createdAt).toLocaleString(),
       })
 
-      // Reset form
       setSubject('')
       setMessage('')
       setAttachment(null)
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
-      setLoading(false)
-    }, 1500)
-  }
 
-  const clearTicketHistory = () => {
-    if (window.confirm('Are you sure you want to clear your ticket submission history from this browser?')) {
-      setTickets([])
-      localStorage.removeItem('healthid_support_tickets')
+      if (user) {
+        await loadMyTickets()
+      }
+    } catch (err) {
+      setTicketError(err.message || 'Failed to submit support ticket')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -600,6 +598,12 @@ export default function SupportPage() {
               {user ? "Logged in details will be filled automatically." : "Sign in to easily track and pre-populate your tickets."}
             </p>
 
+            {ticketError && (
+              <div className="glass rounded-xl p-3 mb-4 border border-red-500/30 text-red-300 text-sm">
+                {ticketError}
+              </div>
+            )}
+
             {success && (
               <div className="glass rounded-2xl p-6 mb-6 border border-emerald-500/30 bg-emerald-950/20 animate-fade-in relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/5 rounded-full blur-xl"></div>
@@ -744,7 +748,7 @@ export default function SupportPage() {
                       </svg>
                       <div className="text-xs truncate">
                         <p className="font-semibold text-white/90 truncate">{attachment.name}</p>
-                        <p className="opacity-50 text-[10px]">{attachment.size}</p>
+                        <p className="opacity-50 text-[10px]">{(attachment.size / 1024 / 1024).toFixed(2)} MB</p>
                       </div>
                     </div>
                     <button
@@ -774,16 +778,10 @@ export default function SupportPage() {
           </div>
 
           {/* Ticket History / Status Board */}
-          {tickets.length > 0 && (
+          {user && tickets.length > 0 && (
             <div className="premium-glass rounded-3xl p-6 border border-white/10">
               <div className="flex justify-between items-center mb-4 pb-2 border-b border-white/10">
                 <h3 className="font-bold text-sm uppercase tracking-wider text-emerald-400">My Support Tickets ({tickets.length})</h3>
-                <button
-                  onClick={clearTicketHistory}
-                  className="text-[10px] text-red-400 hover:text-red-300 font-mono"
-                >
-                  Clear History
-                </button>
               </div>
 
               <div className="space-y-3.5 max-h-64 overflow-y-auto pr-1.5 custom-scrollbar">
@@ -792,7 +790,7 @@ export default function SupportPage() {
                     <div className="flex justify-between items-start gap-2">
                       <h4 className="font-bold text-xs text-white/90 truncate">{t.subject}</h4>
                       <span className="text-[10px] font-mono bg-emerald-500/10 text-accent2 border border-emerald-400/25 px-2 py-0.5 rounded-full shrink-0">
-                        {t.id}
+                        {t.ticketNumber}
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] opacity-60">
@@ -800,7 +798,7 @@ export default function SupportPage() {
                       <span>•</span>
                       <span>Pri: <strong className={t.priority === 'Emergency' ? 'text-red-400' : t.priority === 'High' ? 'text-orange-400' : 'text-emerald-400'}>{t.priority}</strong></span>
                       <span>•</span>
-                      <span>Submitted: {t.createdAt.split(',')[0]}</span>
+                      <span>Submitted: {new Date(t.createdAt).toLocaleDateString()}</span>
                     </div>
                     <div className="flex justify-between items-center text-[10px] pt-1.5 border-t border-white/5 mt-1.5">
                       <span className="text-white/50 truncate max-w-[70%]">Logged: {t.name}</span>

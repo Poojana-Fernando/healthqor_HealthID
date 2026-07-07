@@ -2,7 +2,10 @@ package com.healthid.controller;
 
 import com.healthid.dto.doctorportal.*;
 import com.healthid.entity.AppointmentStatus;
+import com.healthid.dto.medicalreport.DoctorReportResponse;
+import com.healthid.dto.medicalreport.SubmitPatientReportRequest;
 import com.healthid.service.DoctorPortalService;
+import com.healthid.service.MedicalReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -24,9 +27,11 @@ import java.time.Instant;
 public class DoctorPortalController {
 
     private final DoctorPortalService doctorPortalService;
+    private final MedicalReportService medicalReportService;
 
-    public DoctorPortalController(DoctorPortalService doctorPortalService) {
+    public DoctorPortalController(DoctorPortalService doctorPortalService, MedicalReportService medicalReportService) {
         this.doctorPortalService = doctorPortalService;
+        this.medicalReportService = medicalReportService;
     }
 
     @GetMapping("/me")
@@ -77,12 +82,21 @@ public class DoctorPortalController {
     }
 
     @PatchMapping("/appointments/{id}/status")
-    @Operation(summary = "Confirm, cancel, or complete an appointment")
+    @Operation(summary = "Confirm or cancel an appointment")
     public ResponseEntity<DoctorAppointmentResponse> updateStatus(
             @AuthenticationPrincipal String email,
             @PathVariable String id,
             @Valid @RequestBody UpdateAppointmentStatusRequest request) {
         return ResponseEntity.ok(doctorPortalService.updateAppointmentStatus(email, id, request));
+    }
+
+    @PostMapping("/appointments/{id}/complete")
+    @Operation(summary = "Complete appointment with patient visit report")
+    public ResponseEntity<DoctorReportResponse> completeAppointment(
+            @AuthenticationPrincipal String email,
+            @PathVariable String id,
+            @Valid @RequestBody SubmitPatientReportRequest request) {
+        return ResponseEntity.ok(medicalReportService.submitReport(email, id, request));
     }
 
     @GetMapping("/schedule")

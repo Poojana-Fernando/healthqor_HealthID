@@ -50,6 +50,10 @@ public class HealthProfile {
 
     private Instant lastAiAnalysis;
 
+    private String emergencyContactName;
+
+    private String emergencyContactPhone;
+
     public void prepareForPersist() {
         if (id == null) {
             id = UUID.randomUUID().toString();

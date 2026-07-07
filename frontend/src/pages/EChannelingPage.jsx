@@ -1,6 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../api/client'
+import {
+  getBookingDraft,
+  setBookingDraft,
+  clearBookingDraft,
+} from '../utils/homepageStorage'
 
 export default function EChannelingPage() {
   const { user } = useAuth()
@@ -13,6 +18,7 @@ export default function EChannelingPage() {
   const [notes, setNotes] = useState('')
   const [confirmation, setConfirmation] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [draftRestored, setDraftRestored] = useState(false)
 
   const search = () => {
     api.searchDoctors({
@@ -24,6 +30,36 @@ export default function EChannelingPage() {
   }
 
   useEffect(() => { search() }, [])
+
+  const selectDoctor = useCallback((d) => {
+    setSelectedDoctor(d)
+    setBookingDraft({
+      doctorId: d.id,
+      doctorName: d.name,
+      specialization: d.specialization,
+      hospital: d.hospital,
+    })
+  }, [])
+
+  const closeBookingModal = useCallback(() => {
+    setSelectedDoctor(null)
+    setSlot('')
+  }, [])
+
+  useEffect(() => {
+    if (draftRestored || doctors.length === 0) return
+    const draft = getBookingDraft()
+    if (!draft?.doctorId) {
+      setDraftRestored(true)
+      return
+    }
+    const found = doctors.find((d) => d.id === draft.doctorId)
+    if (found) {
+      setSelectedDoctor(found)
+      if (draft.slot) setSlot(draft.slot)
+    }
+    setDraftRestored(true)
+  }, [doctors, draftRestored])
 
   useEffect(() => {
     if (!selectedDoctor) {
@@ -42,6 +78,19 @@ export default function EChannelingPage() {
       .finally(() => setSlotsLoading(false))
   }, [selectedDoctor])
 
+  const handleSlotChange = (value) => {
+    setSlot(value)
+    if (selectedDoctor && value) {
+      setBookingDraft({
+        doctorId: selectedDoctor.id,
+        doctorName: selectedDoctor.name,
+        specialization: selectedDoctor.specialization,
+        hospital: selectedDoctor.hospital,
+        slot: value,
+      })
+    }
+  }
+
   const book = async () => {
     if (!user || !selectedDoctor || !slot) return
     setLoading(true)
@@ -52,7 +101,9 @@ export default function EChannelingPage() {
         notes: notes || null,
       })
       setConfirmation(res)
+      clearBookingDraft()
       setSelectedDoctor(null)
+      setSlot('')
     } catch (e) {
       alert(e.message)
     } finally {
@@ -106,7 +157,7 @@ export default function EChannelingPage() {
             <p className="text-xs opacity-60 mt-1">{d.hospital}</p>
             <p className="text-xs mt-2">★ {d.avgRating}</p>
             <button
-              onClick={() => setSelectedDoctor(d)}
+              onClick={() => selectDoctor(d)}
               className="mt-4 w-full bg-accent hover:bg-accent2 py-2 rounded-lg text-sm"
             >
               Book Appointment
@@ -117,7 +168,7 @@ export default function EChannelingPage() {
 
       {selectedDoctor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setSelectedDoctor(null)} />
+          <div className="absolute inset-0 bg-black/60" onClick={closeBookingModal} />
           <div className="relative glass rounded-2xl p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Book with {selectedDoctor.name}</h2>
             {!user && <p className="text-red-400 text-sm mb-4">Please login to book appointments.</p>}
@@ -127,7 +178,7 @@ export default function EChannelingPage() {
             ) : (
               <select
                 value={slot}
-                onChange={(e) => setSlot(e.target.value)}
+                onChange={(e) => handleSlotChange(e.target.value)}
                 className="w-full bg-navy/50 border border-border rounded-lg px-3 py-2 mb-4"
               >
                 <option value="">Choose a slot</option>
@@ -151,7 +202,7 @@ export default function EChannelingPage() {
               <button onClick={book} disabled={!user || !slot || loading} className="flex-1 bg-accent py-2 rounded-lg disabled:opacity-50">
                 Confirm Booking
               </button>
-              <button onClick={() => setSelectedDoctor(null)} className="flex-1 border border-border py-2 rounded-lg">Cancel</button>
+              <button onClick={closeBookingModal} className="flex-1 border border-border py-2 rounded-lg">Close</button>
             </div>
           </div>
         </div>

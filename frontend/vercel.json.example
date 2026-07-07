@@ -7,6 +7,10 @@
     {
       "source": "/actuator/:path*",
       "destination": "https://YOUR-SERVICE.onrender.com/actuator/:path*"
+    },
+    {
+      "source": "/((?!api/|actuator/|assets/|models/).*)",
+      "destination": "/index.html"
     }
   ]
 }

@@ -77,14 +77,19 @@ public class HealthDataService {
         auditLogService.log(user.getId(), "READ", "MedicalHistory", user.getId());
         return medicalHistoryRepository.findByUserIdOrderByDiagnosedDateDesc(user.getId())
                 .stream()
+                .filter(m -> m.getResolvedDate() == null)
                 .map(this::mapMedicalHistory)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public List<MedicalHistoryResponse> getPreviousDiseases(String email) {
-        return getMedicalHistory(email).stream()
+        User user = getUserByEmail(email);
+        auditLogService.log(user.getId(), "READ", "MedicalHistory", user.getId());
+        return medicalHistoryRepository.findByUserIdOrderByDiagnosedDateDesc(user.getId())
+                .stream()
                 .filter(m -> m.getResolvedDate() != null)
+                .map(this::mapMedicalHistory)
                 .toList();
     }
 

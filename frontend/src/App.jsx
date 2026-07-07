@@ -28,6 +28,7 @@ import PhoneVerificationGate from './components/phone/PhoneVerificationGate'
 import AdminDashboard from './components/admin/AdminDashboard'
 import AdminDoctors from './components/admin/AdminDoctors'
 import AdminPatients from './components/admin/AdminPatients'
+import AdminSupportTickets from './components/admin/AdminSupportTickets'
 
 import DoctorDashboard from './components/doctor/DoctorDashboard'
 import DoctorAppointments from './components/doctor/DoctorAppointments'
@@ -79,6 +80,7 @@ export default function App() {
               <Route path="doctors" element={<AdminDoctors />} />
               <Route path="doctors/new" element={<AdminAddDoctorPage />} />
               <Route path="patients" element={<AdminPatients />} />
+              <Route path="support-tickets" element={<AdminSupportTickets />} />
             </Route>
 
             {/* Doctor Routes */}

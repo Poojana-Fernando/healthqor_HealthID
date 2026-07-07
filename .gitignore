@@ -27,3 +27,12 @@ frontend/.env.*
 # OS
 .DS_Store
 Thumbs.db
+
+# Local-only (VIVA prep, not for remote)
+
+docs/VIVA_COMMIT_50c3d05.md
+docs/VIVA_Dineshakodikara_77c5581.md
+docs/VIVA_SanjalikaAbeysinghe_e3df6db.md
+docs/VIVA_senadipremalal_d058751.md
+docs/VIVA_thisurisudasinghe_496193a.md
+docs/VIVA_umeshakavindi2003-coder_939e5e2.md

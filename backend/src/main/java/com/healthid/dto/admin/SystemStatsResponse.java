@@ -14,4 +14,5 @@ public class SystemStatsResponse {
     private long cancelledToday;
     private long pendingDoctorVerifications;
     private long totalAuditLogs;
+    private long openSupportTickets;
 }

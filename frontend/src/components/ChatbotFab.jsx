@@ -1,15 +1,26 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useChatbot } from '../context/ChatbotContext'
 import { api } from '../api/client'
 import LoadingButton from './ui/LoadingButton'
 import HealthIdLoadingIcon from './ui/HealthIdLoadingIcon'
 
-const WELCOME = "Hello! I'm your Health ID medical assistant. Ask me about human health, wellness, or how to use this app. I only answer health-related questions for people."
+const WELCOME = "Hello! I'm your Health ID assistant. I can answer wellness questions and help you use this app — Profile, Find Care, e-Channeling, symptom checker, and support. I give general guidance only, not a medical diagnosis."
+
+function buildHistory(messages, userMsg) {
+  return [...messages, userMsg]
+    .filter((m) => (m.role === 'user' || m.role === 'assistant') && m.content?.trim())
+    .filter((m) => m.content !== WELCOME)
+    .slice(-10)
+    .map((m) => ({ role: m.role, content: m.content.trim() }))
+}
 
 export default function ChatbotFab() {
   const { user } = useAuth()
-  const [open, setOpen] = useState(false)
+  const { isOpen, setIsOpen, toggleChat } = useChatbot()
+  const open = isOpen
+  const setOpen = setIsOpen
   const [messages, setMessages] = useState([{ role: 'assistant', content: WELCOME }])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -17,36 +28,49 @@ export default function ChatbotFab() {
   const scrollRef = useRef(null)
 
   useEffect(() => {
+    setMessages([{ role: 'assistant', content: WELCOME }])
+    setError('')
+    setInput('')
+  }, [user?.userId])
+
+  useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages, loading, open])
 
-  const sendMessage = async (e) => {
+  useEffect(() => {
+    if (open && user) {
+      api.warmSession().catch(() => {})
+    }
+  }, [open, user])
+
+  const sendMessage = useCallback(async (e) => {
     e.preventDefault()
     const text = input.trim()
-    if (!text || loading) return
+    if (!text || loading || !user) return
 
     setError('')
     setInput('')
     const userMsg = { role: 'user', content: text }
+    const historyForApi = buildHistory(messages, userMsg)
+
     setMessages((prev) => [...prev, userMsg])
     setLoading(true)
 
     try {
-      const history = messages
-        .filter((m) => m.role === 'user' || m.role === 'assistant')
-        .slice(-10)
-        .map((m) => ({ role: m.role, content: m.content }))
-
-      const res = await api.chatAssistant(text, history)
-      setMessages((prev) => [...prev, { role: 'assistant', content: res.reply }])
+      const res = await api.chatAssistant(text, historyForApi)
+      const reply = res?.reply?.trim()
+      if (!reply) {
+        throw new Error('The assistant returned an empty response. Please try again.')
+      }
+      setMessages((prev) => [...prev, { role: 'assistant', content: reply }])
     } catch (err) {
       setError(err.message || 'Failed to get a response')
     } finally {
       setLoading(false)
     }
-  }
+  }, [input, loading, messages, user])
 
   return (
     <>
@@ -55,7 +79,7 @@ export default function ChatbotFab() {
           <div className="flex justify-between items-center px-4 py-3 border-b border-white/10">
             <div>
               <span className="font-semibold text-accent2 text-sm">Medical Assistant</span>
-              <p className="text-[10px] opacity-50">Human health &amp; app help only</p>
+              <p className="text-[10px] opacity-50">Wellness tips &amp; app navigation</p>
             </div>
             <button
               type="button"
@@ -77,11 +101,11 @@ export default function ChatbotFab() {
               <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-3 space-y-3 min-h-[12rem] custom-scrollbar">
                 {messages.map((msg, i) => (
                   <div
-                    key={i}
+                    key={`${msg.role}-${i}-${msg.content.slice(0, 24)}`}
                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
+                      className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap ${
                         msg.role === 'user'
                           ? 'bg-accent/30 text-white rounded-br-sm'
                           : 'bg-white/10 text-white/90 rounded-bl-sm'
@@ -106,13 +130,13 @@ export default function ChatbotFab() {
                 <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask a health question..."
+                  placeholder="Ask about health or the app..."
                   disabled={loading}
                   className="flex-1 bg-navy/40 border border-white/15 rounded-xl px-3 py-2 text-sm placeholder:opacity-40 focus:outline-none focus:border-accent/50"
                 />
                 <LoadingButton
                   type="submit"
-                  disabled={!input.trim()}
+                  disabled={!input.trim() || loading}
                   loading={loading}
                   loadingLabel="Sending..."
                   className="px-4 py-2 rounded-xl text-sm font-medium"
@@ -127,7 +151,7 @@ export default function ChatbotFab() {
 
       <button
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={toggleChat}
         className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-accent hover:bg-accent2 shadow-lg flex items-center justify-center text-2xl z-50 transition"
         aria-label="Open medical assistant chat"
       >
