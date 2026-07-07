@@ -1,8 +1,8 @@
 # Healthqor Health ID
 
-Digital Health Identity platform for Sri Lanka — encrypted health records, AI symptom triage & diet analysis, 3D profile viewer, e-Channeling, and admin tooling.
+Digital Health Identity platform for Sri Lanka — encrypted health records, AI symptom triage & diet analysis, 3D organ profile viewer, Find Care facility search, e-Channeling, doctor portal, and admin tooling.
 
-**Stack:** Spring Boot 3 · React 18 · MongoDB · Redis · OpenAI · Three.js
+**Stack:** Spring Boot 3 · React 18 · MongoDB · Redis · OpenAI · Three.js · Leaflet · OpenStreetMap
 
 ---
 
@@ -12,12 +12,15 @@ Digital Health Identity platform for Sri Lanka — encrypted health records, AI 
 |---------|-------------|
 | **Health ID** | Unique ID generated on signup: `HID-{COUNTRY}-{YEAR}-{HASH}-{RANDOM}` |
 | **Encrypted records** | AES-256 encryption for NIC, allergies, and sensitive fields |
-| **Auth** | JWT (HttpOnly cookies), email/password, Google OAuth2, GitHub OAuth |
+| **Auth** | JWT (HttpOnly cookies), email/password, Google OAuth2, email & phone verification |
 | **AI Symptom Checker** | OpenAI triage with what-not-to-do guidance and recommended articles |
 | **AI Health Analysis** | Personalised diet recommendations from profile data |
-| **3D Humanoid** | Three.js particle viewer (male/female models by gender) |
+| **AI Chat Assistant** | Floating health assistant (`/api/ai/chat`) for wellness and app guidance |
+| **3D Organ Viewer** | Three.js humanoid with interactive GLB organ models (brain, heart, lungs, liver, stomach, kidneys) |
+| **Find Care** | AI-ranked nearby hospitals, clinics & pharmacies on an interactive map with driving routes |
 | **e-Channeling** | Doctor search, nearby doctors, appointment booking |
-| **Admin panel** | User management, Health ID lookup, audit logs |
+| **Doctor portal** | Dashboard, appointments, schedule, and profile at `/doctor` |
+| **Admin panel** | Doctor & patient management, Health ID lookup, audit logs, stats |
 
 ---
 
@@ -28,15 +31,18 @@ healthid/
 ├── backend/          # Java 21 + Spring Boot API
 │   ├── run.ps1       # Start backend (loads ../.env)
 │   └── mvn.cmd       # Maven wrapper helper (Windows)
-├── frontend/         # React + Vite + Tailwind + Three.js
+├── frontend/         # React + Vite + Tailwind + Three.js + Leaflet
 │   ├── vercel.json   # API proxy to Render (updated by build:vercel)
-│   └── scripts/ensure-vercel-config.mjs
+│   ├── netlify.toml  # Netlify build config (use build:netlify)
+│   ├── scripts/ensure-vercel-config.mjs
+│   ├── scripts/ensure-netlify-config.mjs
+│   └── src/components/healthcare/   # Find Care map, facility cards, condition picker
 ├── docs/
-│   ├── DEPLOYMENT.md # Vercel + Render hosting guide
-│   └── TWILIO_SETUP.md
+│   ├── DEPLOYMENT.md # Render + Vercel or Netlify hosting guide
+│   ├── TWILIO_SETUP.md
+│   └── screenshots/  # README screenshots
 ├── render.yaml       # Render Blueprint (backend)
 ├── postman/          # Postman collection & local environment
-├── docs/screenshots/ # README screenshots
 ├── .env.example      # Environment template (copy to .env)
 └── README.md
 ```
@@ -64,11 +70,12 @@ git clone https://github.com/Poojana-Fernando/healthqor_HealthID.git
 cd healthqor_HealthID
 ```
 
-> **Git LFS:** The background video is stored with Git LFS. Install [Git LFS](https://git-lfs.com/) before cloning:
+> **Git LFS:** The background video (`*.mp4`) is stored with Git LFS. Install [Git LFS](https://git-lfs.com/) before cloning:
 > ```bash
 > git lfs install
 > git clone https://github.com/Poojana-Fernando/healthqor_HealthID.git
 > ```
+> 3D organ models (`frontend/public/models/organs/*.glb`) are committed as regular Git files — no LFS required.
 
 ### 2. Configure MongoDB
 
@@ -179,15 +186,49 @@ CACHE_TYPE=simple
 
 ---
 
+## Frontend routes
+
+| Route | Access | Description |
+|-------|--------|-------------|
+| `/` | Public | Home — 3D humanoid symptom explorer |
+| `/profile` | Authenticated | Health profile, organ viewer, vaccinations, AI analysis |
+| `/find-care` | Authenticated | Find Care — condition-based facility search & map |
+| `/echanneling` | Public | Doctor search and appointment booking |
+| `/doctor/login` | Public | Doctor sign-in |
+| `/doctor` | Doctor | Dashboard, appointments, schedule, profile |
+| `/admin` | Admin | User/doctor/patient management, audit logs |
+| `/login`, `/signup` | Public | Patient authentication |
+| `/support` | Public | Support page |
+
+---
+
+## Find Care
+
+The **Find Care** page (`/find-care`) helps authenticated users locate nearby healthcare facilities based on a medical condition or symptom.
+
+**How it works:**
+
+1. User selects a preset condition or enters a custom symptom.
+2. Browser geolocation is used when permitted; otherwise defaults to Colombo.
+3. Backend queries [OpenStreetMap](https://www.openstreetmap.org/) via the Overpass API for hospitals, clinics, doctors, and pharmacies within 15 km.
+4. OpenAI ranks facilities by condition relevance and distance, returning match reasons and a recommended facility.
+5. The frontend displays results in a Leaflet map (CARTO dark tiles) with color-coded pins, driving routes via [OSRM](https://project-osrm.org/), and a ranked facility list.
+
+> **Disclaimer:** Facility data is sourced from OpenStreetMap and may be incomplete. This is not a medical diagnosis.
+
+---
+
 ## API overview
 
 | Method | Endpoint | Access |
 |--------|----------|--------|
 | POST | `/api/auth/register` | Public — returns verification challenge; user created after `/verify-email` |
 | POST | `/api/auth/login` | Public — may require email re-verification |
+| POST | `/api/auth/doctor/login` | Public — doctor sign-in |
 | POST | `/api/auth/verify-email` | Public — OTP or magic link token |
 | POST | `/api/auth/resend-verification` | Public |
 | POST | `/api/auth/forgot-password` | Public — sends reset email for password-based accounts |
+| POST | `/api/auth/doctor/forgot-password` | Public — doctor password reset |
 | POST | `/api/auth/reset-password` | Public — OTP or magic link + new password |
 | POST | `/api/auth/resend-password-reset` | Public |
 | POST | `/api/auth/google` | Public |
@@ -197,13 +238,35 @@ CACHE_TYPE=simple
 | POST | `/api/auth/verify-phone` | Authenticated — body `{ "code": "123456" }` |
 | GET | `/api/profile/me` | Authenticated — includes `phoneVerified` |
 | PUT | `/api/profile/me` | Authenticated |
+| GET | `/api/health-data/vaccinations` | Authenticated |
+| POST | `/api/health-data/vaccinations` | Authenticated |
+| GET | `/api/health-data/medical-history` | Authenticated |
+| GET | `/api/health-data/previous-diseases` | Authenticated |
 | POST | `/api/ai/symptom-check` | Authenticated |
 | POST | `/api/ai/health-analysis` | Authenticated |
+| POST | `/api/ai/chat` | Authenticated — AI health assistant |
+| POST | `/api/healthcare/facilities/search` | Authenticated — body `{ "condition", "lat", "lng", "radiusKm?" }` |
 | GET | `/api/doctors/nearby` | Public |
+| GET | `/api/doctors/search` | Public |
+| GET | `/api/doctors/{id}` | Authenticated |
+| GET | `/api/doctors/{id}/slots` | Authenticated |
 | POST | `/api/appointments` | Authenticated |
+| GET | `/api/appointments/mine` | Authenticated |
+| GET | `/api/doctor/me` | Doctor |
+| PUT | `/api/doctor/me` | Doctor |
+| GET | `/api/doctor/appointments` | Doctor |
+| PATCH | `/api/doctor/appointments/{id}/status` | Doctor |
+| GET | `/api/doctor/schedule` | Doctor |
+| PUT | `/api/doctor/schedule` | Doctor |
 | GET | `/api/admin/users` | Admin |
+| GET | `/api/admin/doctors` | Admin |
+| POST | `/api/admin/doctors` | Admin |
+| GET | `/api/admin/patients` | Admin |
+| GET | `/api/admin/audit-logs` | Admin |
 
 **CSRF:** State-changing requests (`POST`, `PUT`, `PATCH`, `DELETE`) require the `X-XSRF-TOKEN` header. Spring Security sets an `XSRF-TOKEN` cookie on the first GET; the React client reads it automatically.
+
+Full endpoint documentation is available in Swagger UI at http://localhost:8080/swagger-ui.html
 
 ---
 
@@ -266,6 +329,8 @@ Integration tests use Testcontainers with MongoDB 7. Docker must be running for 
 | MongoDB connection failed | Verify `MONGODB_URI` in `.env` and cluster IP allowlist (Atlas) |
 | Redis connection errors | Set `CACHE_TYPE=simple` and `SPRING_PROFILES_ACTIVE=dev` |
 | AI returns fallback data | Check `OPENAI_API_KEY` is set and backend was restarted |
+| Find Care returns no facilities | OpenAI and Overpass API must be reachable; try a larger city or check network |
+| 3D organ models not loading | Ensure `frontend/public/models/organs/*.glb` are real binary files (not Git LFS pointers) |
 | Frontend can't reach API | Ensure backend is on port 8080; leave `VITE_API_URL` empty for dev proxy |
 | Maven `PKIX path building failed` / `certificate_unknown` | Java cannot trust Maven Central HTTPS (common on corporate networks, VPN, or antivirus SSL inspection). See [Maven SSL fix](#maven-ssl--dependency-download-errors) below |
 | `npm` errors in wrong folder | Run `npm install` only inside `frontend/` (not repo root or `backend/`) |
@@ -326,9 +391,9 @@ the project `pom.xml` is fine — your **Java/Maven environment cannot verify HT
 
 ## Production deployment
 
-**Recommended stack:** [Vercel](https://vercel.com) (frontend) + [Render](https://render.com) free tier (backend) + [MongoDB Atlas](https://www.mongodb.com/atlas).
+**Recommended stack:** [Render](https://render.com) free tier (backend) + [Vercel](https://vercel.com) or [Netlify](https://netlify.com) (frontend) + [MongoDB Atlas](https://www.mongodb.com/atlas).
 
-The browser must see **one origin** (Vercel proxies `/api/*` to Render) so JWT cookies and CSRF keep working.
+The browser must see **one origin** (frontend proxies `/api/*` to Render) so JWT cookies and CSRF keep working.
 
 **Full step-by-step guide:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 

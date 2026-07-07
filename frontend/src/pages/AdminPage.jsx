@@ -1,12 +1,13 @@
 import { useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Stethoscope, Users } from 'lucide-react'
+import { LayoutDashboard, Stethoscope, Users, MessageSquare } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 const SECTIONS = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/doctors', label: 'Doctors', icon: Stethoscope, end: false },
   { to: '/admin/patients', label: 'Patients', icon: Users, end: false },
+  { to: '/admin/support-tickets', label: 'Support Tickets', icon: MessageSquare, end: false },
 ]
 
 export default function AdminPage() {

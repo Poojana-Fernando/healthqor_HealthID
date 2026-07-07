@@ -43,6 +43,7 @@ public class AdminService {
     private final PasswordEncoder passwordEncoder;
     private final EncryptionService encryptionService;
     private final HealthIdGenerator healthIdGenerator;
+    private final SupportTicketService supportTicketService;
 
     public AdminService(
             UserRepository userRepository,
@@ -57,7 +58,8 @@ public class AdminService {
             DoctorInvitationService doctorInvitationService,
             PasswordEncoder passwordEncoder,
             EncryptionService encryptionService,
-            HealthIdGenerator healthIdGenerator) {
+            HealthIdGenerator healthIdGenerator,
+            SupportTicketService supportTicketService) {
         this.userRepository = userRepository;
         this.doctorRepository = doctorRepository;
         this.healthProfileRepository = healthProfileRepository;
@@ -71,6 +73,7 @@ public class AdminService {
         this.passwordEncoder = passwordEncoder;
         this.encryptionService = encryptionService;
         this.healthIdGenerator = healthIdGenerator;
+        this.supportTicketService = supportTicketService;
     }
 
     @Transactional(readOnly = true)
@@ -332,6 +335,7 @@ public class AdminService {
                         AppointmentStatus.CANCELLED, startOfDay, endOfDay))
                 .pendingDoctorVerifications(doctorRepository.countByDeactivatedAtIsNullAndVerifiedByAdmin(false))
                 .totalAuditLogs(auditLogService.countAll())
+                .openSupportTickets(supportTicketService.countOpenTickets())
                 .build();
     }
 

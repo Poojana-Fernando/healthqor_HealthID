@@ -13,7 +13,8 @@ function readCsrfToken() {
 
 async function ensureCsrfToken() {
   if (readCsrfToken()) return
-  await fetch(`${API_BASE}/actuator/health`, { credentials: 'include' })
+  // Use a public API route so Vite's /api proxy reaches Spring (actuator is not proxied).
+  await fetch(`${API_BASE}/api/doctors/nearby?lat=6.9271&lng=79.8612`, { credentials: 'include' })
 }
 
 function buildFetchOptions(options = {}) {
@@ -51,7 +52,7 @@ function networkErrorMessage(error) {
   return error?.message || 'Request failed'
 }
 
-async function request(path, options = {}) {
+async function request(path, options = {}, retried = false) {
   const method = (options.method || 'GET').toUpperCase()
   if (BODY_METHODS.has(method)) {
     await ensureCsrfToken()
@@ -62,6 +63,17 @@ async function request(path, options = {}) {
     res = await fetch(`${API_BASE}${path}`, buildFetchOptions(options))
   } catch (error) {
     throw new Error(networkErrorMessage(error))
+  }
+
+  if (res.status === 401 && !retried && path !== '/api/auth/refresh' && path !== '/api/auth/login') {
+    try {
+      const refreshRes = await fetch(`${API_BASE}/api/auth/refresh`, buildFetchOptions({ method: 'POST' }))
+      if (refreshRes.ok) {
+        return request(path, options, true)
+      }
+    } catch {
+      // Fall through to normal error handling
+    }
   }
 
   if (!res.ok) {
@@ -81,7 +93,44 @@ async function request(path, options = {}) {
   return res.json()
 }
 
+async function submitMultipart(path, formData) {
+  await ensureCsrfToken()
+  const headers = {}
+  const csrf = readCsrfToken()
+  if (csrf) {
+    headers[CSRF_HEADER] = csrf
+  }
+
+  let res
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers,
+      body: formData,
+    })
+  } catch (error) {
+    throw new Error(networkErrorMessage(error))
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }))
+    let msg = err.message || 'Request failed'
+    if (err.errors && typeof err.errors === 'object') {
+      const details = Object.entries(err.errors)
+        .map(([field, reason]) => `${field}: ${reason}`)
+        .join(', ')
+      if (details) {
+        msg = `${msg} (${details})`
+      }
+    }
+    throw new Error(msg)
+  }
+  return res.json()
+}
+
 export const api = {
+  warmSession: () => ensureCsrfToken(),
   register: (data) => request('/api/auth/register', { method: 'POST', body: JSON.stringify(data) }),
   login: (data) => request('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
   doctorLogin: (data) => request('/api/auth/doctor/login', { method: 'POST', body: JSON.stringify(data) }),
@@ -182,4 +231,31 @@ export const api = {
     const params = new URLSearchParams({ from, to })
     return request(`/api/doctors/${doctorId}/slots?${params}`)
   },
+  submitSupportTicket: (data, file) => {
+    const formData = new FormData()
+    formData.append(
+      'ticket',
+      new Blob([JSON.stringify(data)], { type: 'application/json' })
+    )
+    if (file) {
+      formData.append('file', file)
+    }
+    return submitMultipart('/api/support/tickets', formData)
+  },
+  mySupportTickets: (page = 0) => request(`/api/support/tickets/mine?page=${page}&size=20`),
+  adminSupportTickets: ({ search, status, category, priority, page = 0, size = 20 } = {}) => {
+    const params = new URLSearchParams({ page, size })
+    if (search) params.set('search', search)
+    if (status) params.set('status', status)
+    if (category) params.set('category', category)
+    if (priority) params.set('priority', priority)
+    return request(`/api/admin/support-tickets?${params}`)
+  },
+  adminSupportTicket: (id) => request(`/api/admin/support-tickets/${id}`),
+  adminUpdateSupportTicketStatus: (id, status) =>
+    request(`/api/admin/support-tickets/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+  adminSupportTicketAttachmentUrl: (id) => `${API_BASE}/api/admin/support-tickets/${id}/attachment`,
 }

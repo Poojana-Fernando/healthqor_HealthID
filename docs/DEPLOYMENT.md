@@ -1,21 +1,25 @@
-# Deployment Guide — Vercel + Render
+# Deployment Guide — Render + Frontend (Vercel or Netlify)
 
 Public demo stack for Healthqor Health ID:
 
 | Layer | Platform | Cost |
 |-------|----------|------|
-| Frontend (React/Vite) | **Vercel** | Free (Hobby) |
+| Frontend (React/Vite) | **Vercel** or **Netlify** | Free |
 | Backend (Spring Boot JAR) | **Render** | Free Web Service |
 | Database | **MongoDB Atlas** M0 | Free |
 | Email | **Brevo** | Free tier |
 | SMS (optional) | **Twilio** | Trial |
 | AI | **OpenAI** | Pay-as-you-go |
 
+Choose **one** frontend host (Vercel or Netlify). Both proxy `/api/*` to Render so JWT cookies and CSRF work on a single origin.
+
 ---
 
 ## Architecture
 
 The app uses **JWT in HttpOnly cookies** and **CSRF** (`XSRF-TOKEN` cookie read by JavaScript). Those only work when the browser talks to **one public origin**.
+
+**Vercel:**
 
 ```
 Browser  →  https://your-app.vercel.app
@@ -24,13 +28,22 @@ Browser  →  https://your-app.vercel.app
               └── /actuator/*    → Vercel rewrite → Render (CSRF bootstrap)
 ```
 
+**Netlify:**
+
+```
+Browser  →  https://your-app.netlify.app
+              ├── /              → React static files
+              ├── /api/*         → Netlify proxy (_redirects) → Render backend
+              └── /actuator/*    → Netlify proxy → Render
+```
+
 **Do not** set `VITE_API_URL` to the Render URL in production. That splits origins and breaks CSRF.
 
 ---
 
 ## Prerequisites
 
-- GitHub repo pushed and accessible to Vercel + Render
+- GitHub repo pushed and accessible to your frontend host + Render
 - [MongoDB Atlas](https://www.mongodb.com/atlas) cluster
 - [Brevo](https://app.brevo.com) account (for real signup emails)
 - [Google Cloud](https://console.cloud.google.com/) OAuth client (optional)
@@ -64,7 +77,7 @@ mongodb+srv://USER:PASS@cluster.mongodb.net/healthid?retryWrites=true&w=majority
 
 1. [Render Dashboard](https://dashboard.render.com) → **New** → **Blueprint**.
 2. Connect this GitHub repo — Render reads [`render.yaml`](../render.yaml) at repo root.
-3. When prompted, fill **secret** env vars (MongoDB URI, OpenAI, Google, admin password, `FRONTEND_ORIGIN` — use a placeholder for now, e.g. `https://your-app.vercel.app`).
+3. When prompted, fill **secret** env vars (MongoDB URI, OpenAI, Google, admin password, `FRONTEND_ORIGIN` — use a placeholder for now, e.g. `https://your-app.netlify.app` or `https://your-app.vercel.app`).
 4. Deploy and wait for **Live** status.
 5. Copy your service URL, e.g. `https://healthid-api.onrender.com`.
 6. Test: `https://healthid-api.onrender.com/actuator/health` → `{"status":"UP"}`.
@@ -91,7 +104,7 @@ mongodb+srv://USER:PASS@cluster.mongodb.net/healthid?retryWrites=true&w=majority
 | `MONGODB_DATABASE` | No | `healthid` |
 | `HEALTHID_ENCRYPTION_KEY` | Yes | 64-char hex |
 | `JWT_SECRET` | Yes | Long random string |
-| `FRONTEND_ORIGIN` | Yes | `https://your-app.vercel.app` (exact, no trailing `/`) |
+| `FRONTEND_ORIGIN` | Yes | Your frontend URL (exact, no trailing `/`) — Vercel or Netlify |
 | `OPENAI_API_KEY` | Yes* | `sk-...` (*AI falls back without it) |
 | `GOOGLE_CLIENT_ID` | For OAuth | |
 | `GOOGLE_CLIENT_SECRET` | For OAuth | |
@@ -114,9 +127,13 @@ mongodb+srv://USER:PASS@cluster.mongodb.net/healthid?retryWrites=true&w=majority
 
 ---
 
-## Phase 3 — Frontend on Vercel
+## Phase 3 — Frontend hosting
 
-### 3.1 Import project
+Pick **Vercel** or **Netlify** (not both for the same deployment).
+
+### Option A — Vercel
+
+#### 3A.1 Import project
 
 1. [Vercel](https://vercel.com) → **Add New Project** → import GitHub repo.
 2. Settings:
@@ -129,7 +146,7 @@ mongodb+srv://USER:PASS@cluster.mongodb.net/healthid?retryWrites=true&w=majority
 | **Output Directory** | `dist` |
 | **Install Command** | `npm install` |
 
-### 3.2 Vercel environment variables
+#### 3A.2 Vercel environment variables
 
 Add for **Production** (and Preview if desired):
 
@@ -141,18 +158,64 @@ Add for **Production** (and Preview if desired):
 
 `npm run build:vercel` runs [`scripts/ensure-vercel-config.mjs`](../frontend/scripts/ensure-vercel-config.mjs), which writes `frontend/vercel.json` rewrites from `VERCEL_BACKEND_URL`.
 
-### 3.3 Git LFS (3D / video assets)
+#### 3A.3 Git LFS (3D / video assets)
 
 If home page 3D or video assets are missing after deploy:
 
 1. Vercel project → **Settings** → enable **Git LFS**, **or**
 2. Change **Build Command** to: `git lfs pull && npm run build:vercel`
 
-### 3.4 Deploy
+#### 3A.4 Deploy
 
 1. Deploy on Vercel → note URL, e.g. `https://healthid-xxxx.vercel.app`.
 2. **Update Render** `FRONTEND_ORIGIN` to that exact URL → **Manual Deploy** on Render.
 3. Redeploy Vercel if you changed `VERCEL_BACKEND_URL`.
+
+---
+
+### Option B — Netlify
+
+#### 3B.1 Import project
+
+1. [Netlify](https://app.netlify.com) → **Add new site** → **Import from Git** → select repo.
+2. Settings (Netlify reads [`frontend/netlify.toml`](../frontend/netlify.toml) when base directory is `frontend`):
+
+| Setting | Value |
+|---------|--------|
+| **Base directory** | `frontend` |
+| **Build command** | `npm run build:netlify` |
+| **Publish directory** | `dist` |
+
+#### 3B.2 Netlify environment variables
+
+Add for **Production** (and Deploy Previews if desired):
+
+| Variable | Value |
+|----------|--------|
+| `NETLIFY_BACKEND_URL` | `https://healthid-api.onrender.com` (your Render URL, **no trailing slash**) |
+| `VITE_API_URL` | *(leave empty)* |
+| `VITE_GOOGLE_CLIENT_ID` | Same as `GOOGLE_CLIENT_ID` on Render |
+
+`npm run build:netlify` runs [`scripts/ensure-netlify-config.mjs`](../frontend/scripts/ensure-netlify-config.mjs), which writes `frontend/public/_redirects` before Vite build. Vite copies it to `dist/_redirects` for Netlify proxy rules.
+
+> **Proxy timeout:** Netlify’s edge proxy has a **~26 second** request timeout on the free tier. Slow AI routes (`/api/ai/*`, `/api/healthcare/facilities/search`) may occasionally return **504** if OpenAI or Overpass is slow. Vercel Hobby allows ~60s. Keep Render warm (UptimeRobot) and retry on timeout.
+
+#### 3B.3 Git LFS (3D / video assets)
+
+If home page video or assets are missing after deploy:
+
+1. Netlify site → **Site configuration** → **Build & deploy** → enable **Git LFS**, **or**
+2. Change **Build command** to: `git lfs pull && npm run build:netlify`
+
+#### 3B.4 Deploy
+
+1. Deploy on Netlify → note URL, e.g. `https://healthid-xxxx.netlify.app`.
+2. **Update Render** `FRONTEND_ORIGIN` to that exact URL → **Manual Deploy** on Render.
+3. Redeploy Netlify if you changed `NETLIFY_BACKEND_URL`.
+
+#### 3B.5 Verify redirects in build log
+
+After deploy, confirm `dist/_redirects` contains your Render URL (not the placeholder). If POST requests return 403, `VITE_API_URL` is likely set incorrectly or `_redirects` was not generated.
 
 ---
 
@@ -170,14 +233,14 @@ If home page 3D or video assets are missing after deploy:
 
 | Field | Value |
 |-------|--------|
-| **Authorized JavaScript origins** | `https://your-app.vercel.app` |
-| **Authorized redirect URIs** | `https://your-app.vercel.app/auth/google/callback` |
+| **Authorized JavaScript origins** | `https://your-app.vercel.app` or `https://your-app.netlify.app` |
+| **Authorized redirect URIs** | `https://your-app.vercel.app/auth/google/callback` or `https://your-app.netlify.app/auth/google/callback` |
 
-Set `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` on Render and `VITE_GOOGLE_CLIENT_ID` on Vercel (rebuild after change).
+Set `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` on Render and `VITE_GOOGLE_CLIENT_ID` on Vercel or Netlify (rebuild after change).
 
 ### OpenAI
 
-`OPENAI_API_KEY` on Render only. AI routes may take 10–30s; Vercel proxy timeout is usually ~60s on Hobby.
+`OPENAI_API_KEY` on Render only. AI routes may take 10–30s; Vercel proxy timeout is usually ~60s on Hobby; Netlify ~26s (see above).
 
 ### Twilio (optional)
 
@@ -191,28 +254,33 @@ No setup — used by **Find Care** (`HealthcareFacilityService`).
 
 ## Phase 5 — Post-deploy checklist
 
+Replace “frontend URL” with your Vercel or Netlify domain.
+
 | # | Test | Pass? |
 |---|------|-------|
-| 1 | Open Vercel URL — home page loads | |
-| 2 | DevTools → Cookies on Vercel domain — `XSRF-TOKEN` appears after load | |
+| 1 | Open frontend URL — home page loads | |
+| 2 | DevTools → Cookies on frontend domain — `XSRF-TOKEN` appears after load | |
 | 3 | Register → Brevo email received → verify → login | |
 | 4 | `/profile` loads when logged in | |
-| 5 | Google login (if configured) | |
-| 6 | Admin login (`ADMIN_EMAIL`) → `/admin` | |
-| 7 | e-Channeling doctor search (seed doctors via Admin first) | |
-| 8 | AI symptom check (authenticated) | |
-| 9 | Logout clears session | |
+| 5 | `/find-care` loads when logged in (map + facility search) | |
+| 6 | Google login (if configured) | |
+| 7 | Admin login (`ADMIN_EMAIL`) → `/admin` | |
+| 8 | e-Channeling doctor search (seed doctors via Admin first) | |
+| 9 | AI symptom check / chat (authenticated) | |
+| 10 | Logout clears session | |
 
 ### Common failures
 
 | Symptom | Fix |
 |---------|-----|
-| 403 on all POST requests | `VITE_API_URL` must be **empty**; check `vercel.json` rewrites |
-| CORS error | `FRONTEND_ORIGIN` on Render must match Vercel URL exactly |
-| 502 on `/api/*` | Render cold start or wrong `VERCEL_BACKEND_URL` |
+| 403 on all POST requests | `VITE_API_URL` must be **empty**; check `vercel.json` (Vercel) or `dist/_redirects` (Netlify) |
+| CORS error | `FRONTEND_ORIGIN` on Render must match frontend URL exactly; remove `VITE_API_URL` if set to Render |
+| 502 on `/api/*` | Render cold start or wrong backend URL env var |
+| 504 on AI routes (Netlify) | Netlify ~26s proxy timeout — retry; keep Render warm |
 | Login then immediate logout | HTTPS + `cookie.secure=true` in prod (already configured) |
 | MongoDB connection failed | Atlas IP allowlist + correct `MONGODB_URI` |
-| Google OAuth `redirect_uri_mismatch` | Add exact Vercel callback URL in Google Console |
+| Google OAuth `redirect_uri_mismatch` | Add exact callback URL in Google Console |
+| `/profile` 404 on refresh (Netlify) | Ensure `/* /index.html 200` is last line in `_redirects` |
 
 ---
 
@@ -228,12 +296,23 @@ After first deploy:
 
 ## Phase 7 — Custom domain (optional)
 
-1. **Vercel** → add domain `healthid.yourdomain.com`.
+1. **Vercel** or **Netlify** → add domain `healthid.yourdomain.com`.
 2. Update **Render** `FRONTEND_ORIGIN=https://healthid.yourdomain.com`.
 3. Update **Google OAuth** origins + redirect URI.
-4. Redeploy Render (and Vercel if env changed).
+4. Redeploy Render (and frontend if env changed).
 
-`VERCEL_BACKEND_URL` stays pointed at Render — only the public frontend URL changes.
+Backend URL env var (`VERCEL_BACKEND_URL` or `NETLIFY_BACKEND_URL`) stays pointed at Render — only the public frontend URL changes.
+
+---
+
+## Deploy order (Netlify example)
+
+1. MongoDB Atlas — cluster + connection string
+2. Render — Blueprint deploy + secrets; note `https://<service>.onrender.com`
+3. Netlify — import repo, set `NETLIFY_BACKEND_URL`, deploy; note `https://<site>.netlify.app`
+4. Render — set `FRONTEND_ORIGIN` to Netlify URL; manual redeploy
+5. Google OAuth — update origins + callback to Netlify URL
+6. Run Phase 5 checklist
 
 ---
 
@@ -263,11 +342,14 @@ npm run preview
 | File | Purpose |
 |------|---------|
 | [`render.yaml`](../render.yaml) | Render Blueprint for backend |
-| [`frontend/vercel.json`](../frontend/vercel.json) | API proxy rewrites (auto-updated by build script) |
+| [`frontend/vercel.json`](../frontend/vercel.json) | Vercel API proxy rewrites (auto-updated by build script) |
 | [`frontend/scripts/ensure-vercel-config.mjs`](../frontend/scripts/ensure-vercel-config.mjs) | Writes `vercel.json` from `VERCEL_BACKEND_URL` |
-| [`frontend/vercel.json.example`](../frontend/vercel.json.example) | Template if configuring manually |
+| [`frontend/vercel.json.example`](../frontend/vercel.json.example) | Vercel template if configuring manually |
+| [`frontend/netlify.toml`](../frontend/netlify.toml) | Netlify build settings |
+| [`frontend/scripts/ensure-netlify-config.mjs`](../frontend/scripts/ensure-netlify-config.mjs) | Writes `public/_redirects` from `NETLIFY_BACKEND_URL` |
+| [`frontend/_redirects.example`](../frontend/_redirects.example) | Netlify redirects template if configuring manually |
 | [`application-prod.properties`](../backend/src/main/resources/application-prod.properties) | Prod: no Swagger, secure cookies, no Redis |
-| [`postman/HealthID-API.postman_collection.json`](../postman/HealthID-API.postman_collection.json) | API testing — set `baseUrl` to Vercel URL for proxied tests |
+| [`postman/HealthID-API.postman_collection.json`](../postman/HealthID-API.postman_collection.json) | API testing — set `baseUrl` to frontend URL for proxied tests |
 
 ---
 
@@ -276,7 +358,8 @@ npm run preview
 | Role | Tasks |
 |------|--------|
 | **Backend** | Render deploy, all Render env vars, Atlas |
-| **Frontend** | Vercel project, `VERCEL_BACKEND_URL`, `VITE_GOOGLE_CLIENT_ID` |
+| **Frontend (Vercel)** | Vercel project, `VERCEL_BACKEND_URL`, `VITE_GOOGLE_CLIENT_ID` |
+| **Frontend (Netlify)** | Netlify site, `NETLIFY_BACKEND_URL`, `VITE_GOOGLE_CLIENT_ID` |
 | **Integrations** | Brevo, Google OAuth, OpenAI |
 | **QA** | Phase 5 checklist, Postman on prod URL |
 
@@ -286,7 +369,7 @@ npm run preview
 
 | Service | Typical cost |
 |---------|----------------|
-| Vercel Hobby | $0 |
+| Vercel Hobby or Netlify Starter | $0 |
 | Render free web service | $0 (cold starts) |
 | MongoDB Atlas M0 | $0 |
 | Brevo free tier | $0 (~300 emails/day) |

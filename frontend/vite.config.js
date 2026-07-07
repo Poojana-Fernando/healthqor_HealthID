@@ -18,6 +18,11 @@ export default defineConfig({
         changeOrigin: true,
         timeout: 60_000,
       },
+      '/actuator': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        timeout: 30_000,
+      },
     },
   },
   preview: {
@@ -27,6 +32,11 @@ export default defineConfig({
         target: API_TARGET,
         changeOrigin: true,
         timeout: 60_000,
+      },
+      '/actuator': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        timeout: 30_000,
       },
     },
   },

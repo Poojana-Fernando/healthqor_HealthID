@@ -1,0 +1,6 @@
+# Copy to public/_redirects and replace YOUR-SERVICE with your Render URL.
+# Or use: npm run build:netlify (reads NETLIFY_BACKEND_URL at build time).
+
+/api/*  https://YOUR-SERVICE.onrender.com/api/:splat  200!
+/actuator/*  https://YOUR-SERVICE.onrender.com/actuator/:splat  200!
+/*  /index.html  200

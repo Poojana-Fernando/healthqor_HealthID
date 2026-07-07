@@ -2,7 +2,13 @@ package com.healthid.controller;
 
 import com.healthid.dto.admin.*;
 import com.healthid.dto.appointment.AppointmentResponse;
+import com.healthid.dto.support.AdminSupportTicketResponse;
+import com.healthid.dto.support.SupportTicketStatusUpdateRequest;
+import com.healthid.entity.SupportTicketStatus;
 import com.healthid.service.AdminService;
+import com.healthid.service.SupportTicketService;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -20,9 +26,11 @@ import java.util.Map;
 public class AdminController {
 
     private final AdminService adminService;
+    private final SupportTicketService supportTicketService;
 
-    public AdminController(AdminService adminService) {
+    public AdminController(AdminService adminService, SupportTicketService supportTicketService) {
         this.adminService = adminService;
+        this.supportTicketService = supportTicketService;
     }
 
     @GetMapping("/users")
@@ -139,5 +147,42 @@ public class AdminController {
     @Operation(summary = "System statistics dashboard")
     public ResponseEntity<SystemStatsResponse> stats() {
         return ResponseEntity.ok(adminService.getSystemStats());
+    }
+
+    @GetMapping("/support-tickets")
+    @Operation(summary = "Paginated support ticket list with filters")
+    public ResponseEntity<Page<AdminSupportTicketResponse>> supportTickets(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) SupportTicketStatus status,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String priority,
+            @PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(supportTicketService.listTicketsForAdmin(
+                search, status, category, priority, pageable));
+    }
+
+    @GetMapping("/support-tickets/{id}")
+    @Operation(summary = "Get support ticket details")
+    public ResponseEntity<AdminSupportTicketResponse> supportTicket(@PathVariable String id) {
+        return ResponseEntity.ok(supportTicketService.getTicketForAdmin(id));
+    }
+
+    @PatchMapping("/support-tickets/{id}/status")
+    @Operation(summary = "Update support ticket status")
+    public ResponseEntity<AdminSupportTicketResponse> updateSupportTicketStatus(
+            @PathVariable String id,
+            @Valid @RequestBody SupportTicketStatusUpdateRequest request) {
+        return ResponseEntity.ok(supportTicketService.updateStatus(id, request.getStatus()));
+    }
+
+    @GetMapping("/support-tickets/{id}/attachment")
+    @Operation(summary = "Download support ticket attachment")
+    public ResponseEntity<Resource> supportTicketAttachment(@PathVariable String id) {
+        AdminSupportTicketResponse ticket = supportTicketService.getTicketForAdmin(id);
+        Resource resource = supportTicketService.getAttachmentResource(id);
+        String filename = ticket.getAttachmentFileName() != null ? ticket.getAttachmentFileName() : "attachment";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .body(resource);
     }
 }
