@@ -43,7 +43,7 @@ function formatDateTime(iso) {
 }
 
 export default function HomePage() {
-  const { user, profile } = useAuth()
+  const { user } = useAuth()
   const { t } = useLanguage()
   const { openChat } = useChatbot()
   const navigate = useNavigate()
@@ -162,8 +162,7 @@ export default function HomePage() {
     <main>
       {/* Hero */}
       <section className="max-w-7xl mx-auto px-6 py-16 md:py-24">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          <div>
+        <div className="max-w-3xl">
             <div className="flex items-center gap-4 mb-6">
               <AnimatedLogo size={56} />
               <span className="text-xs font-mono uppercase tracking-wider text-accent2/80">Healthqor Health ID</span>
@@ -180,7 +179,7 @@ export default function HomePage() {
 
             <div className="flex flex-wrap gap-3 mb-8">
               <span className="text-xs bg-emerald-500/10 text-accent2 px-3 py-1.5 rounded-full border border-emerald-400/25">
-                🔒 {t('trustEncrypted')}
+                {t('trustEncrypted')}
               </span>
               <span className="text-xs bg-emerald-500/10 text-accent2 px-3 py-1.5 rounded-full border border-emerald-400/25">
                 ✓ {t('trustVerified')}
@@ -227,81 +226,6 @@ export default function HomePage() {
                 </>
               )}
             </div>
-          </div>
-
-          <div className="premium-glass rounded-3xl p-6 md:p-8 shadow-glass-glow-lg">
-            <p className="text-xs font-mono uppercase tracking-wider text-accent2 mb-4">
-              {user ? 'Your dashboard' : 'Dashboard preview'}
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                <p className="text-[10px] uppercase tracking-wider opacity-50 mb-1">Health ID</p>
-                <p className="text-sm font-mono text-accent2 truncate">
-                  {user && profile?.healthId
-                    ? profile.healthId
-                    : 'HID-LK-2026-••••-XXXX'}
-                </p>
-                {!user && <p className="text-xs opacity-60 mt-1">Illustrative</p>}
-              </div>
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                <p className="text-[10px] uppercase tracking-wider opacity-50 mb-1">Next visit</p>
-                {user ? (
-                  snapshotLoading ? (
-                    <p className="text-sm opacity-50">Loading…</p>
-                  ) : nextAppointment ? (
-                    <>
-                      <p className="text-sm font-semibold truncate">{nextAppointment.doctorName}</p>
-                      <p className="text-xs text-accent2">{formatDateTime(nextAppointment.scheduledAt)}</p>
-                    </>
-                  ) : (
-                    <p className="text-sm opacity-60">{t('snapshotNone')}</p>
-                  )
-                ) : (
-                  <>
-                    <p className="text-sm font-semibold">Dr. Sample</p>
-                    <p className="text-xs opacity-60">Illustrative</p>
-                  </>
-                )}
-              </div>
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                <p className="text-[10px] uppercase tracking-wider opacity-50 mb-1">Active Rx</p>
-                {user ? (
-                  <p className="text-2xl font-bold text-accent2">
-                    {snapshotLoading ? '…' : prescriptions.length}
-                  </p>
-                ) : (
-                  <>
-                    <p className="text-2xl font-bold text-accent2">2</p>
-                    <p className="text-xs opacity-60">Illustrative</p>
-                  </>
-                )}
-              </div>
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                <p className="text-[10px] uppercase tracking-wider opacity-50 mb-1">Last report</p>
-                {user ? (
-                  snapshotLoading ? (
-                    <p className="text-sm opacity-50">Loading…</p>
-                  ) : latestReport ? (
-                    <>
-                      <p className="text-sm truncate">
-                        {latestReport.diagnosisSummary || `Visit with Dr. ${latestReport.doctorName}`}
-                      </p>
-                      <p className="text-xs opacity-60">
-                        {formatDate(latestReport.visitDate || latestReport.createdAt)}
-                      </p>
-                    </>
-                  ) : (
-                    <p className="text-sm opacity-60">{t('snapshotNone')}</p>
-                  )
-                ) : (
-                  <>
-                    <p className="text-sm">General check-up</p>
-                    <p className="text-xs opacity-60">Illustrative</p>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
