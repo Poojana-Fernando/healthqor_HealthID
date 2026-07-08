@@ -135,11 +135,14 @@ Add for **Production** (and Preview if desired):
 
 | Variable | Value |
 |----------|--------|
-| `VERCEL_BACKEND_URL` | `https://healthid-api.onrender.com` (your Render URL, **no trailing slash**) |
-| `VITE_API_URL` | *(leave empty)* |
+| `RENDER_API_URL` | `https://healthid-api.onrender.com` (your Render URL, **no trailing slash**) |
 | `VITE_GOOGLE_CLIENT_ID` | Same as `GOOGLE_CLIENT_ID` on Render |
 
-`npm run build:vercel` runs [`scripts/ensure-vercel-config.mjs`](../frontend/scripts/ensure-vercel-config.mjs), which writes `frontend/vercel.json` rewrites from `VERCEL_BACKEND_URL`.
+> **Do not** add `VITE_API_URL` on Vercel — omit it entirely so API calls use relative `/api/*` paths (proxied via rewrites). Vercel's UI rejects empty values if you add the key manually.
+>
+> **Do not** use `VERCEL_BACKEND_URL` — Vercel reserves the `VERCEL_` prefix for system variables and will reject it as invalid.
+
+`npm run build:vercel` runs [`scripts/ensure-vercel-config.mjs`](../frontend/scripts/ensure-vercel-config.mjs), which writes `frontend/vercel.json` rewrites from `RENDER_API_URL`.
 
 ### 3.3 Git LFS (3D / video assets)
 
@@ -152,7 +155,7 @@ If home page 3D or video assets are missing after deploy:
 
 1. Deploy on Vercel → note URL, e.g. `https://healthid-xxxx.vercel.app`.
 2. **Update Render** `FRONTEND_ORIGIN` to that exact URL → **Manual Deploy** on Render.
-3. Redeploy Vercel if you changed `VERCEL_BACKEND_URL`.
+3. Redeploy Vercel if you changed `RENDER_API_URL`.
 
 ---
 
@@ -208,9 +211,9 @@ No setup — used by **Find Care** (`HealthcareFacilityService`).
 
 | Symptom | Fix |
 |---------|-----|
-| 403 on all POST requests | `VITE_API_URL` must be **empty**; check `vercel.json` rewrites |
+| 403 on all POST requests | Omit `VITE_API_URL` on Vercel; check `vercel.json` rewrites and `RENDER_API_URL` |
 | CORS error | `FRONTEND_ORIGIN` on Render must match Vercel URL exactly |
-| 502 on `/api/*` | Render cold start or wrong `VERCEL_BACKEND_URL` |
+| 502 on `/api/*` | Render cold start or wrong `RENDER_API_URL` |
 | Login then immediate logout | HTTPS + `cookie.secure=true` in prod (already configured) |
 | MongoDB connection failed | Atlas IP allowlist + correct `MONGODB_URI` |
 | Google OAuth `redirect_uri_mismatch` | Add exact Vercel callback URL in Google Console |
@@ -234,7 +237,7 @@ After first deploy:
 3. Update **Google OAuth** origins + redirect URI.
 4. Redeploy Render (and Vercel if env changed).
 
-`VERCEL_BACKEND_URL` stays pointed at Render — only the public frontend URL changes.
+`RENDER_API_URL` stays pointed at Render — only the public frontend URL changes.
 
 ---
 
@@ -265,7 +268,7 @@ npm run preview
 |------|---------|
 | [`render.yaml`](../render.yaml) | Render Blueprint for backend |
 | [`frontend/vercel.json`](../frontend/vercel.json) | API proxy rewrites (auto-updated by build script) |
-| [`frontend/scripts/ensure-vercel-config.mjs`](../frontend/scripts/ensure-vercel-config.mjs) | Writes `vercel.json` from `VERCEL_BACKEND_URL` |
+| [`frontend/scripts/ensure-vercel-config.mjs`](../frontend/scripts/ensure-vercel-config.mjs) | Writes `vercel.json` from `RENDER_API_URL` |
 | [`frontend/vercel.json.example`](../frontend/vercel.json.example) | Template if configuring manually |
 | [`application-prod.properties`](../backend/src/main/resources/application-prod.properties) | Prod: no Swagger, secure cookies, no Redis |
 | [`postman/HealthID-API.postman_collection.json`](../postman/HealthID-API.postman_collection.json) | API testing — set `baseUrl` to Vercel URL for proxied tests |
@@ -277,7 +280,7 @@ npm run preview
 | Role | Tasks |
 |------|--------|
 | **Backend** | Render deploy, all Render env vars, Atlas |
-| **Frontend** | Vercel project, `VERCEL_BACKEND_URL`, `VITE_GOOGLE_CLIENT_ID` |
+| **Frontend** | Vercel project, `RENDER_API_URL`, `VITE_GOOGLE_CLIENT_ID` |
 | **Integrations** | Brevo, Google OAuth, OpenAI |
 | **QA** | Phase 5 checklist, Postman on prod URL |
 
