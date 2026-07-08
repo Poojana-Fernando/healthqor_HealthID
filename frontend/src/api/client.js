@@ -13,8 +13,7 @@ function readCsrfToken() {
 
 async function ensureCsrfToken() {
   if (readCsrfToken()) return
-  // Use a public API route so Vite's /api proxy reaches Spring (actuator is not proxied).
-  await fetch(`${API_BASE}/api/doctors/nearby?lat=6.9271&lng=79.8612`, { credentials: 'include' })
+  await fetch(`${API_BASE}/actuator/health`, { credentials: 'include' })
 }
 
 function buildFetchOptions(options = {}) {

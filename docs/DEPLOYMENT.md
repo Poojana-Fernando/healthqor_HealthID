@@ -125,9 +125,9 @@ mongodb+srv://USER:PASS@cluster.mongodb.net/healthid?retryWrites=true&w=majority
 |---------|--------|
 | **Framework Preset** | Vite |
 | **Root Directory** | `frontend` |
+| **Install Command** | `node scripts/ensure-vercel-config.mjs && npm install` |
 | **Build Command** | `npm run build:vercel` |
 | **Output Directory** | `dist` |
-| **Install Command** | `npm install` |
 
 ### 3.2 Vercel environment variables
 
@@ -143,6 +143,8 @@ Add for **Production** (and Preview if desired):
 > **Do not** use `VERCEL_BACKEND_URL` — Vercel reserves the `VERCEL_` prefix for system variables and will reject it as invalid.
 
 `npm run build:vercel` runs [`scripts/ensure-vercel-config.mjs`](../frontend/scripts/ensure-vercel-config.mjs), which writes `frontend/vercel.json` rewrites from `RENDER_API_URL`.
+
+> **Important:** Vercel reads `vercel.json` early in the deploy pipeline. The committed [`frontend/vercel.json`](../frontend/vercel.json) must contain your real Render URL (not `REPLACE_WITH_YOUR_RENDER_URL`), and the **Install Command** should run `ensure-vercel-config.mjs` so `RENDER_API_URL` can refresh rewrites before routing is finalized. If `/api/*` returns 404 on your Vercel domain, the proxy URL is wrong — check this file first.
 
 ### 3.3 Git LFS (background video)
 
@@ -214,6 +216,7 @@ No setup — used by **Find Care** (`HealthcareFacilityService`).
 
 | Symptom | Fix |
 |---------|-----|
+| `/api/*` or `/actuator/health` returns **404** on Vercel | `frontend/vercel.json` still has placeholder URL — set real Render URL and redeploy; run `ensure-vercel-config.mjs` in Install Command |
 | 403 on all POST requests | Omit `VITE_API_URL` on Vercel; check `vercel.json` rewrites and `RENDER_API_URL` |
 | CORS error | `FRONTEND_ORIGIN` on Render must match Vercel URL exactly |
 | 502 on `/api/*` | Render cold start or wrong `RENDER_API_URL` |

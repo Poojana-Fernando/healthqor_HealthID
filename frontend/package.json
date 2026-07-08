@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:vercel": "node scripts/ensure-vercel-config.mjs && vite build",
+    "prebuild:vercel": "node scripts/ensure-vercel-config.mjs",
+    "build:vercel": "npm run prebuild:vercel && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
