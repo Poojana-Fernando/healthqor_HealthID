@@ -144,12 +144,15 @@ Add for **Production** (and Preview if desired):
 
 `npm run build:vercel` runs [`scripts/ensure-vercel-config.mjs`](../frontend/scripts/ensure-vercel-config.mjs), which writes `frontend/vercel.json` rewrites from `RENDER_API_URL`.
 
-### 3.3 Git LFS (3D / video assets)
+### 3.3 Git LFS (background video)
 
-If home page 3D or video assets are missing after deploy:
+The home page background video (`frontend/src/bgVideo/bg.mp4`, ~3.4 MB) is stored in regular Git — **no Git LFS setup required** on Vercel.
 
-1. Vercel project → **Settings** → enable **Git LFS**, **or**
-2. Change **Build Command** to: `git lfs pull && npm run build:vercel`
+| Setting | Value |
+|---------|--------|
+| **Build Command** | `npm run build:vercel` |
+
+> **Do not** add `git lfs pull` to the build command on Vercel — it fails with `batch request: missing protocol` because the build environment has no LFS endpoint configured. Use Vercel's **Settings → Git → Git LFS** only if you re-introduce LFS-tracked assets later.
 
 ### 3.4 Deploy
 
@@ -214,6 +217,7 @@ No setup — used by **Find Care** (`HealthcareFacilityService`).
 | 403 on all POST requests | Omit `VITE_API_URL` on Vercel; check `vercel.json` rewrites and `RENDER_API_URL` |
 | CORS error | `FRONTEND_ORIGIN` on Render must match Vercel URL exactly |
 | 502 on `/api/*` | Render cold start or wrong `RENDER_API_URL` |
+| Build fails: `git lfs pull` / `missing protocol` | Use build command `npm run build:vercel` only — do not run `git lfs pull` in the build step |
 | Login then immediate logout | HTTPS + `cookie.secure=true` in prod (already configured) |
 | MongoDB connection failed | Atlas IP allowlist + correct `MONGODB_URI` |
 | Google OAuth `redirect_uri_mismatch` | Add exact Vercel callback URL in Google Console |
