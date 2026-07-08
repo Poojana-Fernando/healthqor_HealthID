@@ -2,6 +2,8 @@
 
 Digital Health Identity platform for Sri Lanka — encrypted health records, AI symptom triage & diet analysis, 3D organ profile viewer, Find Care facility search, e-Channeling, doctor portal, and admin tooling.
 
+Live URL :  https://healthqor-health-id.vercel.app
+
 **Stack:** Spring Boot 3 · React 18 · MongoDB · Redis · OpenAI · Three.js · Leaflet · OpenStreetMap
 
 ---
